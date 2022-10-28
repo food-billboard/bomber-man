@@ -1,0 +1,53 @@
+#app {
+
+}
+canvas {
+  background-color: rgb(28, 172, 29);
+}
+.margin {
+  margin: 4px;
+}
+
+.action {
+  width: 100vw;
+  display: flex;
+  align-items: center;
+}
+.action-move {
+  width: 50%;
+  display: grid;
+  grid-template-columns: repeat(3, 33.33%);
+  grid-template-rows: repeat(3, 33.33%);
+  justify-items: center;
+  align-items: center;
+}
+.action-top,
+.action-left,
+.action-right,
+.action-bottom {
+  width: 80%;
+}
+.action-top {
+  grid-column-start: 2;
+}
+.action-right {
+  grid-column-start: 3;
+  grid-row-start: 2;
+}
+.action-left {
+  grid-column-start: 1;
+  grid-row-start: 2;
+}
+.action-bottom {
+  grid-column-start: 2;
+  grid-row-start: 3;
+}
+
+.action-boom {
+  width: 50%;
+  display: flex;
+  justify-content: space-evenly;
+}
+.action-j {
+  margin-left: 0;
+}
