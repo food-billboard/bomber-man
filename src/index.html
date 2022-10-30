@@ -5,14 +5,14 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>炸弹人游戏（FC）</title>
-  <link rel="stylesheet" type="text/css" href="https://yarnpkg.com/en/package/normalize.css"></link>
+  <!-- <link rel="stylesheet" type="text/css" href="https://yarnpkg.com/en/package/normalize.css"></link> -->
   <link rel="stylesheet" type="text/css" href="./index.css"></link>
 </head>
 <body>
   <div id="app">
-    <canvas>
-      This browser is not support canvas api!! 
-    </canvas>
+    <div id="container">
+
+    </div>
     <div class="action">
       <div class="action-move">
         <button class="action-top">上</button>
@@ -28,8 +28,10 @@
       </div>
     </div>
   </div>
-  <script type="text/javascript" src="https://unpkg.com/konva@8/konva.min.js"></script>
-  <script type="text/javascript" src="https://unpkg.com/eventemitter3@latest/umd/eventemitter3.min.js"></script>
+  <!-- <script type="text/javascript" src="https://unpkg.com/konva@8/konva.min.js"></script> -->
+  <script type="text/javascript" src="./konva.js"></script>
+  <script type="text/javascript" src="./event.js"></script>
+  <!-- <script type="text/javascript" src="https://unpkg.com/eventemitter3@latest/umd/eventemitter3.min.js"></script> -->
   <script type="text/javascript" src="./constants.js"></script>
   <script type="text/javascript" src="./utils.js"></script>
   <script type="text/javascript" src="./index.js"></script>

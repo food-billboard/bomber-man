@@ -22,7 +22,7 @@ function getBuff(type) {
 function getMonster(type) {
 	switch (type) {
 		case "BalloonMonster":
-			return LoopBuff
+			return BalloonMonster
 		case "CrossWallMonster":
 			return CrossWallMonster
 		case "SpeedMonster":
@@ -37,29 +37,25 @@ const RightMoveButton = query(".action-right")
 const TopMoveButton = query(".action-top")
 const BottomMoveButton = query(".action-bottom")
 
-const JropButton = query(".action-j")
+const DropButton = query(".action-j")
 const BoomButton = query(".action-K")
 const NextButton = query(".action-l")
 const StopButton = query(".action-p")
 
+let CANVAS_WIDTH = 800 
+let CANVAS_HEIGHT = CANVAS_WIDTH * 13 / 33
+const UNIT = CANVAS_WIDTH / 33
+// 单步移动
+const MOVE_UNIT = UNIT / 100
+
 const Stage = new Konva.Stage({
-  container: 'app',
-  width: 500,
-  height: 500
+  container: 'container',
+  width: CANVAS_WIDTH,
+  height: CANVAS_HEIGHT
 })
 
 const Layer = new Konva.Layer();
 Stage.add(Layer);
-
-const rect = new Konva.Rect({
-  x: 300,
-  y: 300,
-  width: 100,
-  height: 80,
-  stroke: 'red',
-})
-
-Layer.add(rect)
 
 let idCounter = 0
 
@@ -67,43 +63,92 @@ let idCounter = 0
 const EMITTER_WALL_DESTROY = "EMITTER_WALL_DESTROY"
 // 怪物被消灭
 const EMITTER_MONSTER_DESTROY = "EMITTER_MONSTER_DESTROY"
+// 移动
+const EMITTER_TARGET_MOVE = "EMITTER_TARGET_MOVE"
+// 碰撞
+const EMITTER_TARGET_KNOCK = "EMITTER_TARGET_KNOCK"
 const EventEmitter = new EventEmitter3()
 
 // Object
 
 class CoreObject {
+
+	// 在这里监听unit改变
+
+	constructor(position) {
+		this.id = idCounter++
+		this.x = position[0]
+		this.y = position[1]
+	}
+
 	x = 0
 	y = 0
+	instance 
 
 	id
-
-	constructor() {
-		this.id = idCounter++
-	}
 
 	create() {}
 
 	eventBind() {}
 
+	updatePosition(position) {
+		if(position) {
+			this.x = position.x
+			this.y = position.y
+		}
+		this.instance && this.instance.absolutePosition({ x: this.x * UNIT, y: this.y * UNIT })
+	}
+
 	update() {}
 
 	destroy() {}
+
+	stop() {
+
+	}
+
+	start() {
+
+	}
+
 }
 
 // 角色
 class Person extends CoreObject {
+
+	constructor(position) {
+		super(position)
+		this.create()
+	}
+
 	// 穿墙
 	static crossable = false
 
 	life = 3
 
-	constructor() {}
-
-	create() {}
+	create() {
+		const person = new Konva.Rect({
+			x: this.x * UNIT,
+			y: this.y * UNIT,
+			width: UNIT,
+			height: UNIT,
+			fill: 'red'
+		})
+		Layer.add(person)
+	}
 
 	die() {
 		this.life--
 	}
+
+	eventBind() {
+
+	}
+
+	eventUnBind() {
+
+	}
+
 }
 
 // 炸弹
@@ -112,17 +157,107 @@ class Boom extends CoreObject {
 	static time = false
 	static huge = false
 
-	stop() {}
+	constructor(options) {
+		const { onBoom } = options 
+		this.onBoom = onBoom
+	}
+
+	onBoom 
+	timeout 
+	timeoutStart
+	timeoutRest = 5000 
+	timer 
+
+	boomVertical 
+	boomHorizontal
+
+	create() {
+		const boom = new Konva.Rect({
+			x: this.x * UNIT,
+			y: this.y * UNIT,
+			width: UNIT,
+			height: UNIT,
+			// 后面改成图片
+			fill: '#CCFFFF',
+		})
+		Layer.add(boom)
+		if(!Boom.time) this.boom()
+	}
+
+	// 立刻爆炸
+	immediateBoom() {
+		// TODO 
+		this.timer = setInterval(() => {
+			// init 
+			if(!this.boomVertical) {
+
+			}
+		}, 1000 / 60)
+	}
+
+	// 炸弹爆炸
+	boom() {
+		this.timeoutStart = Date.now() 
+		this.timeout = setTimeout(() => {
+			this.immediateBoom()
+			this.timeoutRest = 0 
+		}, this.timeoutRest)
+	}
+
+	stop() {
+		if(this.timeoutRest !== 0) {
+			this.timeoutRest = Date.now() - this.timeoutStart
+			clearTimeout(this.timeout)
+		}
+		if(Boom.time) {
+			clearInterval(this.timer)
+		}
+	}
+}
+
+class BoomFactory {
+
+	constructor() {
+		this.eventBind()
+	}
+
+	boomMap = {
+
+	}
+
+	onBoom(id) {
+		delete this.boomMap[id]
+	}
+
+	create() {
+		if(Object.keys(this.boomMap).length >= (Boom.multiple ? 5 : 1)) return
+		const boom = new Boom({
+			onBoom: this.onBoom
+		})
+		this.boomMap[boom.id] = boom 
+	}
+
+	boom() {
+		const targetId = Math.min(...Object.keys(this.boomMap))	
+		!!this.boomMap[targetId] && this.boomMap[targetId].immediateBoom()
+	}
+
 }
 
 class Buff extends CoreObject {
 
-  display = false 
+  display = true 
 
-	// 生成的位置范围
-	constructor(position) {
-		this.x = position[0]
-		this.y = position[1]
+	create(image) {
+		const buff = new Konva.Rect({
+			x: this.x * UNIT,
+			y: this.y * UNIT,
+			width: UNIT,
+			height: UNIT,
+			// 后面改成图片
+			fill: this.display ? image : 'transparent',
+		})
+		Layer.add(buff)
 	}
 
 	update() {}
@@ -145,18 +280,45 @@ class Buff extends CoreObject {
 }
 
 // 连放炸弹buff
-class LoopBuff extends Buff {}
+class LoopBuff extends Buff {
+
+	constructor(position) {
+		super(position)
+		this.create('green')
+	}
+
+}
 
 // 炸弹顶点爆炸buff
-class TimeBoomBuff extends Buff {}
+class TimeBoomBuff extends Buff {
+	constructor(position) {
+		super(position)
+		this.create('black')
+	}
+}
 
 // 穿墙buff
-class CrossWallBuff extends Buff {}
+class CrossWallBuff extends Buff {
+	constructor(position) {
+		super(position)
+		this.create('pink')
+	}
+}
 
 // 炸弹爆炸范围buff
-class SuperBoomBuff extends Buff {}
+class SuperBoomBuff extends Buff {
+	constructor(position) {
+		super(position)
+		this.create('gray')
+	}
+}
 
 class Door extends Buff {
+
+	constructor(position) {
+		super(position)
+		this.create('#ff0')
+	}
 
 	update() {}
 
@@ -164,9 +326,10 @@ class Door extends Buff {
 
 class Wall extends CoreObject {
 	constructor(position, destructible) {
+		super(position)
 		this.destructible = destructible
-		this.position = position
 		this.create()
+		this.eventBind()
 	}
 
 	// 是否可以被破坏
@@ -176,33 +339,131 @@ class Wall extends CoreObject {
 	// canvas 对象实例
 	instance
 
-	create() {}
+	create() {
+		const wall = new Konva.Rect({
+			x: this.x * UNIT,
+			y: this.y * UNIT,
+			width: UNIT,
+			height: UNIT,
+			fill: this.destructible ? 'blue' : 'yellow',
+		})
+		Layer.add(wall)
+	}
+
+	onMonsterMove({ x, y }) {
+		
+	}
+
+	eventBind() {
+		EventEmitter.addListener(EMITTER_TARGET_MOVE, this.onMonsterMove)
+	}
+
+	eventUnBind() {
+		EventEmitter.addListener(EMITTER_TARGET_MOVE, this.onMonsterMove)
+	}
+
+	destroy() {
+		super.destroy()
+
+	}
+
 }
 
 class Monster extends CoreObject {
+
+	constructor(position, image) {
+		super(position)
+		this.create(image)
+		// this.timer = setInterval(this.move.bind(this), 1000 / 60)
+	}
+
 	// 移动速度
 	speed = 10
 	// 可穿越
 	crossable = false
 
-	stop() {}
+	// 运动方向 
+	direction 
+	// 运动距离  
+	moveCounter = 0 
+
+	timer 
+
+	create(image) {
+		this.instance = new Konva.Rect({
+			x: this.x * UNIT,
+			y: this.y * UNIT,
+			width: UNIT,
+			height: UNIT,
+			fill: image,
+			// 后期换成图片
+		})
+		Layer.add(this.instance)
+	}
+
+	move() {
+		if(this.moveCounter === 0) {
+			// left top right bottom 
+			const directions = [ [-1, 0], [0, -1], [1, 0], [0, 1] ]
+			this.direction = directions[Math.floor(Math.random() * directions.length)]
+			this.moveCounter = Math.floor(Math.random() * (1 + 8) + 1) * 100 
+		}
+		this.moveCounter -- 
+		const [ deltaX, deltaY ] = this.direction
+		const newX = this.x + deltaX * MOVE_UNIT / UNIT
+		const newY = this.y + deltaY * MOVE_UNIT / UNIT
+		const newPosition = {
+			x: newX,
+			y: newY
+		}
+		this.updatePosition(newPosition)
+		EventEmitter.emit(EMITTER_TARGET_MOVE, newPosition)
+	}
+
+	start() {
+		super.start()
+		this.timer = setInterval(this.move, 1000 / 60)
+	}
+
+	stop() {
+		super.stop()
+		clearInterval(this.time)
+	}
+
+	destroy() {
+		super.destroy()
+		clearInterval(this.timer)
+	}
+	
 }
 
 // 气球怪
-class BalloonMonster extends Monster {}
+class BalloonMonster extends Monster {
+	constructor(position) {
+		super(position, '#f0f')
+	}	
+}
 
 // 穿墙怪
 class CrossWallMonster extends Monster {
 	crossable = true
+	constructor(position) {
+		super(position, '#ef0')
+	}	
 }
 
 // 高速怪
 class SpeedMonster extends Monster {
 	speed = this.speed * 2
+	constructor(position) {
+		super(position, '#0ff')
+	}
 }
 
 class Game {
-	constructor() {}
+	constructor() {
+		this.init()
+	}
 
 	timer
 	timeout = 240
@@ -217,7 +478,7 @@ class Game {
 	person
 
 	get levelData() {
-		return LEVEL_MAP[this.level]
+		return LEVEL_MAP[this.level - 1]
 	}
 
 	init() {
@@ -225,8 +486,8 @@ class Game {
 		this.timeout = time
 		wall.forEach(this.createWall.bind(this, false))
 		destructibleWall.forEach(this.createWall.bind(this, true))
-		monster.forEach(this.createMonster)
-		buff.forEach(this.createBuff)
+		monster.forEach(this.createMonster.bind(this))
+		buff.forEach(this.createBuff.bind(this))
 		this.initDoor()
 		this.initPerson()
 	}
@@ -239,14 +500,14 @@ class Game {
 
 	// 创建怪物
 	createMonster([type, ...position]) {
-		const monster = new (getMonster(type))(position, destructible)
+		const monster = new (getMonster(type))(position)
 		this.monster.push(monster)
 	}
 
 	// 创建buff
 	createBuff([type, ...position]) {
-		const monster = new (getBuff(type))(position, destructible)
-		this.buff.push(monster)
+		const buff = new (getBuff(type))(position)
+		this.buff.push(buff)
 	}
 
 	// 创建门
@@ -258,7 +519,7 @@ class Game {
 
 	// 创建角色
 	initPerson() {
-		this.person = new Person()
+		this.person = new Person([1, 2])
 	}
 
 	start() {

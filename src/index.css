@@ -1,7 +1,7 @@
 #app {
 
 }
-canvas {
+#container > div {
   background-color: rgb(28, 172, 29);
 }
 .margin {
