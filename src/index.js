@@ -39,7 +39,6 @@ const BottomMoveButton = query(".action-bottom")
 
 const DropButton = query(".action-j")
 const BoomButton = query(".action-k")
-const NextButton = query(".action-l")
 const StopButton = query(".action-p")
 
 document.addEventListener('keydown', (e) => {
@@ -60,7 +59,6 @@ document.addEventListener('keyup', (e) => {
 	const actionMap = {
 		J: EMITTER_DROP_OP,
 		K: EMITTER_BOOM_OP,
-		L: EMITTER_NEXT_OP,
 		P: EMITTER_START_OP,
 	}
 	if(Object.keys(actionMap).includes(key)) {
@@ -97,9 +95,6 @@ DropButton.addEventListener('click', () => {
 })
 BoomButton.addEventListener('click', () => {
 	EventEmitter.emit(EMITTER_BOOM_OP)
-})
-NextButton.addEventListener('click', () => {
-	EventEmitter.emit(EMITTER_NEXT_OP)
 })
 StopButton.addEventListener('click', () => {
 	EventEmitter.emit(EMITTER_START_OP)
@@ -236,16 +231,16 @@ class Person extends CoreObject {
 		}
 		let counter = EventEmitter.listenerCount(EMITTER_PERSON_MOVE)
 		let knocked = false 
+		let knockType 
 		EventEmitter.emit(EMITTER_PERSON_MOVE, this, newPosition, (type, isKnock) => {
 			counter -- 
-			console.log(counter, 222222)
 			if(isKnock) {
 				knocked = true 
+				knockType = type 
 			}
 			if(counter === 0) {
-				console.log(11111)
 				if(knocked) {
-					console.log('person knocked', type)
+					console.log('person knocked', knockType)
 				}else {
 					this.updatePosition(newPosition)		
 				}
@@ -260,10 +255,6 @@ class Person extends CoreObject {
 
 	boomedBoom() {
 		this.boom.boom()
-	}
-
-	joinNext() {
-		console.log('下一关')
 	}
 
 	onKnock(type) {
@@ -281,7 +272,6 @@ class Person extends CoreObject {
 		
 		EventEmitter.addListener(EMITTER_DROP_OP, this.dropBoom.bind(this))
 		EventEmitter.addListener(EMITTER_BOOM_OP, this.boomedBoom.bind(this))
-		EventEmitter.addListener(EMITTER_NEXT_OP, this.joinNext.bind(this))
 
 	}
 
@@ -293,7 +283,6 @@ class Person extends CoreObject {
 
 		EventEmitter.removeListener(EMITTER_DROP_OP, this.dropBoom.bind(this))
 		EventEmitter.removeListener(EMITTER_BOOM_OP, this.boomedBoom.bind(this))
-		EventEmitter.removeListener(EMITTER_NEXT_OP, this.joinNext.bind(this))
 	}
 
 	destroy() {
@@ -481,13 +470,15 @@ class BoomFactory {
 
 class Buff extends CoreObject {
 
-  display = true 
+  display = false 
 
 	constructor(position, image) {
 		super(position)
 		this.create(image)
 		this.eventBind()
 	}
+
+	 type = 'BUFF'
 
 	create(image) {
 		this.instance = new Konva.Rect({
@@ -501,8 +492,8 @@ class Buff extends CoreObject {
 		Layer.add(this.instance)
 	}
 
-	onTargetMove = (instance, position, onKnock) => {
-		const isKnock = knockJudge(position, { x: this.x, y: this.y })
+	onTargetMove(instance, position, onKnock) {
+		const isKnock = !!this.display && knockJudge(position, { x: this.x, y: this.y })
 		onKnock(this.type, isKnock)
 	}
 
@@ -512,12 +503,12 @@ class Buff extends CoreObject {
 
 	eventBind = () => {
 		EventEmitter.addListener(EMITTER_WALL_DESTROY, this.onWallDestroy.bind(this))
-		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove)
+		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove.bind(this))
 	}
 
 	eventUnBind = () => {
 		EventEmitter.removeListener(EMITTER_WALL_DESTROY, this.onWallDestroy.bind(this))
-		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove)
+		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove.bind(this))
 	}
 
 	destroy() {
@@ -583,11 +574,19 @@ class SuperBoomBuff extends Buff {
 class Door extends Buff {
 
 	constructor(position) {
-		super(position)
-		this.create('#ff0')
+		super(position, '#3f0')
 	}
 
-	update() {}
+	type = 'DOOR'
+
+	onTargetMove(instance, position, onKnock) {
+		super.onTargetMove(instance, position, (type, isKnock) => {
+			onKnock(this.type, isKnock)
+			if(isKnock) {
+				EventEmitter.emit(EMITTER_NEXT_OP)
+			}
+		}) 
+	}
 
 }
 
@@ -622,9 +621,13 @@ class Wall extends CoreObject {
 	}
 
 	eventBind() {
+		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove.bind(this))
+		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove.bind(this))
 	}
 
 	eventUnBind() {
+		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove.bind(this))
+		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove.bind(this))
 	}
 
 	destroy() {
@@ -774,7 +777,6 @@ class Game {
 	// 创建buff
 	createBuff([type, ...position]) {
 		const buff = new (getBuff(type))(position)
-		this.buff.push(buff)
 	}
 
 	// 创建门
