@@ -35,7 +35,7 @@ const LEVEL_MAP = [
       ...UnDestructibleWallPosition
     ],
     destructibleWall: [
-      [2, 3], [3, 3], [4, 3], [5, 3], [2, 1], [1, 3]
+      [2, 3], [3, 3], [4, 3], [5, 3], [1, 3], [10, 5]
     ],
     monster: [
       ['BalloonMonster', 8, 1],

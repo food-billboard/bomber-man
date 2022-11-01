@@ -117,10 +117,14 @@ Stage.add(Layer);
 
 let idCounter = 0
 
+// 销毁
+const EMITTER_DESTROY = "EMITTER_DESTROY"
+// 游戏结束
+const EMITTER_GAME_OVER = "EMITTER_GAME_OVER"
 // 墙被摧毁
 const EMITTER_WALL_DESTROY = "EMITTER_WALL_DESTROY"
-// 怪物被消灭
-const EMITTER_MONSTER_DESTROY = "EMITTER_MONSTER_DESTROY"
+// 怪物创建
+const EMITTER_MONSTER_CREATE = "EMITTER_MONSTER_CREATE"
 // 怪物移动
 const EMITTER_MONSTER_MOVE = "EMITTER_MONSTER_MOVE"
 // 人物移动
@@ -153,6 +157,9 @@ class CoreObject {
 		this.id = idCounter++
 		this.x = position[0]
 		this.y = position[1]
+		this.eventBind = this.eventBind.bind(this)
+		this.eventUnBind = this.eventUnBind.bind(this)
+		this.destroy = this.destroy.bind(this)
 	}
 
 	x = 0
@@ -163,7 +170,13 @@ class CoreObject {
 
 	create() {}
 
-	eventBind() {}
+	eventBind() {
+		EventEmitter.once(EMITTER_DESTROY, this.destroy)
+	}
+
+	eventUnBind() {
+
+	}
 
 	updatePosition(position) {
 		if(position) {
@@ -175,7 +188,10 @@ class CoreObject {
 
 	update() {}
 
-	destroy() {}
+	destroy() {
+		this.instance && this.instance.destroy()
+		this.eventUnBind()
+	}
 
 	stop() {
 
@@ -190,11 +206,11 @@ class CoreObject {
 // 角色
 class Person extends CoreObject {
 
-	constructor(position) {
+	constructor(position, life) {
 		super(position)
 		this.create()
+		this.life = life 
 		this.eventBind()
-		this.move = this.move.bind(this)
 	}
 
 	type = 'PERSON'
@@ -214,10 +230,12 @@ class Person extends CoreObject {
 			fill: 'red'
 		})
 		Layer.add(this.instance)
+		EventEmitter.emit(EMITTER_PERSON_MOVE, this, { x: this.x, y: this.y }, () => {})
 	}
 
 	die() {
 		this.life--
+		EventEmitter.emit(EMITTER_GAME_OVER, this.life)
 	}
 
 	move({ deltaX, deltaY }) {
@@ -226,10 +244,21 @@ class Person extends CoreObject {
 		const newX = this.x + deltaX * MOVE_UNIT * 20 / UNIT
 		const newY = this.y + deltaY * MOVE_UNIT * 20 / UNIT
 		const newPosition = {
-			x: newX,
-			y: newY
+			x: toFixed4(newX),
+			y: toFixed4(newY)
+		}
+		// 碰到障碍墙
+		if(knockWall(newPosition)) {
+			this.loading = false 
+			console.log('person knocked wall')
+			return 
 		}
 		let counter = EventEmitter.listenerCount(EMITTER_PERSON_MOVE)
+		if(counter === 0) {
+			this.updatePosition(newPosition)		
+			this.loading = false 
+			return 
+		}
 		let knocked = false 
 		let knockType 
 		EventEmitter.emit(EMITTER_PERSON_MOVE, this, newPosition, (type, isKnock) => {
@@ -239,8 +268,15 @@ class Person extends CoreObject {
 				knockType = type 
 			}
 			if(counter === 0) {
-				if(knocked) {
-					console.log('person knocked', knockType)
+				if(knocked && knockType !== 'BUFF') {
+					switch(knockType) {
+						case 'MONSTER':
+						case 'BOOM':
+							this.die()
+							break 
+						default:
+							console.log('hello world')
+					}
 				}else {
 					this.updatePosition(newPosition)		
 				}
@@ -257,37 +293,40 @@ class Person extends CoreObject {
 		this.boom.boom()
 	}
 
-	onKnock(type) {
-		switch(type) {
-			case 'WALL':
-				this.updatePosition({  })
+	onTargetMove(instance, position, onKnock) {
+		const isKnock = knockJudge({ x: this.x, y: this.y }, { ...position })
+		if(isKnock) {
+			this.die()
 		}
+		onKnock(this.type, isKnock)
 	}
 
 	eventBind() {
-		EventEmitter.addListener(EMITTER_LEFT_OP, this.move.bind(this))
-		EventEmitter.addListener(EMITTER_RIGHT_OP, this.move.bind(this))
-		EventEmitter.addListener(EMITTER_TOP_OP, this.move.bind(this))
-		EventEmitter.addListener(EMITTER_BOTTOM_OP, this.move.bind(this))
+		super.eventBind()
+		EventEmitter.addListener(EMITTER_LEFT_OP, this.move, this)
+		EventEmitter.addListener(EMITTER_RIGHT_OP, this.move, this)
+		EventEmitter.addListener(EMITTER_TOP_OP, this.move, this)
+		EventEmitter.addListener(EMITTER_BOTTOM_OP, this.move, this)
 		
-		EventEmitter.addListener(EMITTER_DROP_OP, this.dropBoom.bind(this))
-		EventEmitter.addListener(EMITTER_BOOM_OP, this.boomedBoom.bind(this))
+		EventEmitter.addListener(EMITTER_DROP_OP, this.dropBoom, this)
+		EventEmitter.addListener(EMITTER_BOOM_OP, this.boomedBoom, this)
+
+		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 
 	}
 
 	eventUnBind() {
-		EventEmitter.removeListener(EMITTER_LEFT_OP, this.move.bind(this))
-		EventEmitter.removeListener(EMITTER_RIGHT_OP, this.move.bind(this))
-		EventEmitter.removeListener(EMITTER_TOP_OP, this.move.bind(this))
-		EventEmitter.removeListener(EMITTER_BOTTOM_OP, this.move.bind(this))
+		super.eventBind()
+		EventEmitter.removeListener(EMITTER_LEFT_OP, this.move, this)
+		EventEmitter.removeListener(EMITTER_RIGHT_OP, this.move, this)
+		EventEmitter.removeListener(EMITTER_TOP_OP, this.move, this)
+		EventEmitter.removeListener(EMITTER_BOTTOM_OP, this.move, this)
 
-		EventEmitter.removeListener(EMITTER_DROP_OP, this.dropBoom.bind(this))
-		EventEmitter.removeListener(EMITTER_BOOM_OP, this.boomedBoom.bind(this))
-	}
+		EventEmitter.removeListener(EMITTER_DROP_OP, this.dropBoom, this)
+		EventEmitter.removeListener(EMITTER_BOOM_OP, this.boomedBoom, this)
 
-	destroy() {
-		super.destroy() 
-		this.eventUnBind()
+		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
+
 	}
 
 }
@@ -328,13 +367,15 @@ class Boom extends CoreObject {
 	}
 
 	eventBind = () => {
-		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove)
-		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove)
+		super.eventBind()
+		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
+		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 	}
 
 	eventUnBind = () => {
-		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove)
-		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove)
+		super.eventBind()
+		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
+		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 	}
 
 	create() {
@@ -417,7 +458,6 @@ class Boom extends CoreObject {
 	destroy() {
 		super.destroy() 
 		this.initBoomInstace.destroy()
-		this.eventUnBind()
 	}
 
 	stop() {
@@ -453,7 +493,7 @@ class BoomFactory {
 		if(Object.keys(this.boomMap).length >= (this.multipleState ? 5 : 1)) return
 		const { x, y } = position 
 		const boom = new Boom([Math.round(x), Math.round(y)], {
-			onBoom: this.onBoom.bind(this),
+			onBoom: this.onBoom,
 			multipleState: this.multipleState,
 			timeState: this.timeState,
 			hugeState: this.hugeState
@@ -495,6 +535,9 @@ class Buff extends CoreObject {
 	onTargetMove(instance, position, onKnock) {
 		const isKnock = !!this.display && knockJudge(position, { x: this.x, y: this.y })
 		onKnock(this.type, isKnock)
+		if(isKnock) {
+			this.destroy()
+		}
 	}
 
 	onWallDestroy(position) {
@@ -502,17 +545,15 @@ class Buff extends CoreObject {
 	}
 
 	eventBind = () => {
-		EventEmitter.addListener(EMITTER_WALL_DESTROY, this.onWallDestroy.bind(this))
-		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove.bind(this))
+		super.eventBind()
+		EventEmitter.addListener(EMITTER_WALL_DESTROY, this.onWallDestroy, this)
+		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 	}
 
 	eventUnBind = () => {
-		EventEmitter.removeListener(EMITTER_WALL_DESTROY, this.onWallDestroy.bind(this))
-		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove.bind(this))
-	}
-
-	destroy() {
-		this.eventUnBind()
+		super.eventBind()
+		EventEmitter.removeListener(EMITTER_WALL_DESTROY, this.onWallDestroy, this)
+		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 	}
 }
 
@@ -580,6 +621,9 @@ class Door extends Buff {
 	type = 'DOOR'
 
 	onTargetMove(instance, position, onKnock) {
+		if(EventEmitter.listenerCount(EMITTER_MONSTER_CREATE) !== 0) {
+			return onKnock(this.type, false)
+		}
 		super.onTargetMove(instance, position, (type, isKnock) => {
 			onKnock(this.type, isKnock)
 			if(isKnock) {
@@ -595,7 +639,7 @@ class Wall extends CoreObject {
 		super(position)
 		this.destructible = destructible
 		this.create()
-		this.eventBind()
+		this.destructible && this.eventBind()
 	}
 
 	// 是否可以被破坏
@@ -621,18 +665,15 @@ class Wall extends CoreObject {
 	}
 
 	eventBind() {
-		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove.bind(this))
-		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove.bind(this))
+		super.eventBind()
+		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
+		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 	}
 
 	eventUnBind() {
-		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove.bind(this))
-		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove.bind(this))
-	}
-
-	destroy() {
-		super.destroy()
-
+		super.eventUnBind()
+		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
+		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 	}
 
 }
@@ -643,7 +684,8 @@ class Monster extends CoreObject {
 		super(position)
 		this.create(image)
 		this.eventBind()
-		this.timer = setInterval(this.move.bind(this), 1000 / 60)
+		this.timer = setInterval(this.move, 1000 / 60)
+		this.move = this.move.bind(this)
 	}
 
 	type = "MONSTER"
@@ -658,7 +700,7 @@ class Monster extends CoreObject {
 	// 运动距离  
 	moveCounter = 0 
 
-	timer 
+	timer  
 
 	create(image) {
 		this.instance = new Konva.Rect({
@@ -672,22 +714,74 @@ class Monster extends CoreObject {
 		Layer.add(this.instance)
 	}
 
-	move() {
+	move = () => {
+		if(this.loading) return 
+		this.loading = true 
 		if(this.moveCounter === 0) {
 			// left top right bottom 
 			const directions = [ [-1, 0], [0, -1], [1, 0], [0, 1] ]
+			const moveCounters = [1, 3, 5, 7, 9] 
 			this.direction = directions[Math.floor(Math.random() * directions.length)]
-			this.moveCounter = Math.floor(Math.random() * (1 + 8) + 1) * 100 
+			this.moveCounter = moveCounters[Math.floor(Math.random() * moveCounters.length)] * 100 
 		}
 		this.moveCounter -- 
 		const [ deltaX, deltaY ] = this.direction
 		const newX = this.x + deltaX * MOVE_UNIT / UNIT
 		const newY = this.y + deltaY * MOVE_UNIT / UNIT
 		const newPosition = {
-			x: newX,
-			y: newY
+			x: toFixed4(newX),
+			y: toFixed4(newY)
 		}
-		this.updatePosition(newPosition)
+		// 碰到障碍墙
+		if(knockWall(newPosition)) {
+			this.moveCounter = 0
+			this.loading = false 
+			console.log('monster knock the undestructible wall')
+			return 
+		}
+		let counter = EventEmitter.listenerCount(EMITTER_MONSTER_MOVE)
+		if(counter === 0) {
+			this.updatePosition(newPosition)		
+			this.loading = false 
+			return 
+		}
+		let knocked = false 
+		let knockType 
+		EventEmitter.emit(EMITTER_MONSTER_MOVE, this, newPosition, (type, isKnock) => {
+			counter -- 
+			if(isKnock) {
+				knocked = true 
+				knockType = type 
+			}
+			if(counter === 0) {
+				if(knocked) {
+					console.log('monster knocked', knockType)
+					this.moveCounter = 0
+				}else {
+					this.updatePosition(newPosition)		
+				}
+				this.loading = false 
+			}
+		})
+	}
+
+	onTargetMove(instance, position, onKnock) {
+		const isKnock = knockJudge(position, { x: this.x, y: this.y })
+		onKnock(this.type, isKnock)
+	}
+
+	createMonster() {/** Prefix */}
+
+	eventBind() {
+		super.eventBind()
+		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
+		EventEmitter.addListener(EMITTER_MONSTER_CREATE, this.createMonster, this)
+	}
+
+	eventUnBind() {
+		super.eventUnBind()
+		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
+		EventEmitter.removeListener(EMITTER_MONSTER_CREATE, this.createMonster, this)
 	}
 
 	start() {
@@ -703,6 +797,7 @@ class Monster extends CoreObject {
 	destroy() {
 		super.destroy()
 		clearInterval(this.timer)
+		super.destroy()
 	}
 	
 }
@@ -730,22 +825,70 @@ class SpeedMonster extends Monster {
 	}
 }
 
+function createGamePrompt({
+	content,
+	onRestart,
+	timeout
+}) {
+	const group = new Konva.Group({
+		width: CANVAS_WIDTH,
+		height: CANVAS_HEIGHT,
+		x: 0,
+		y: 0 
+	}) 
+	group.add(new Konva.Rect({
+		width: CANVAS_WIDTH,
+		height: CANVAS_HEIGHT,
+		x: 0,
+		y: 0,
+		fill: 'rgba(0, 0, 0, 0.3)',
+	}))
+	Layer.add(group)
+	const commonFontConfig = {
+		align: 'center',
+		verticalAlign: 'center',
+		fontSize: CANVAS_WIDTH / 50,
+		x: Stage.width() / 2,
+    y: Stage.height() / 2,
+		fill: '#fff',
+	}
+	const text = new Konva.Text({
+		...commonFontConfig,
+		text: content,
+	})
+	text.offsetX(text.width() / 2)
+	text.offsetY(text.height() / 2)
+
+	if(!~timeout) {
+		text.on('click', () => {
+			group.destroy() 
+			onRestart()
+		})
+	}
+
+	group.add(text)
+	if(!!~timeout) {
+		setTimeout(() => {
+			group.destroy()
+			onRestart()
+		}, timeout)
+	}
+}
+
 class Game {
 	constructor() {
 		this.init()
+		this.eventBind()
 	}
 
 	timer
 	timeout = 240
 
 	level = 1
-
-	wall = []
-	destructibleWall = []
-	monster = []
-	buff = []
-	door
 	person
+	personLife = 3 
+
+	loading = false 
 
 	get levelData() {
 		return LEVEL_MAP[this.level - 1]
@@ -756,39 +899,94 @@ class Game {
 		this.timeout = time
 		wall.forEach(this.createWall.bind(this, false))
 		destructibleWall.forEach(this.createWall.bind(this, true))
-		monster.forEach(this.createMonster.bind(this))
-		buff.forEach(this.createBuff.bind(this))
+		monster.forEach(this.createMonster)
+		buff.forEach(this.createBuff)
 		this.initDoor()
 		this.initPerson()
+
+		// setTimeout(() => {
+		// 	this.onNext()
+		// }, 5000)
+
 	}
 
 	// 创建障碍墙
 	createWall(destructible, position) {
-		const wall = new Wall(position, destructible)
-		this[destructible ? "destructibleWall" : "wall"].push(wall)
+		new Wall(position, destructible)
 	}
 
 	// 创建怪物
 	createMonster([type, ...position]) {
-		const monster = new (getMonster(type))(position)
-		this.monster.push(monster)
+		new (getMonster(type))(position)
 	}
 
 	// 创建buff
 	createBuff([type, ...position]) {
-		const buff = new (getBuff(type))(position)
+		new (getBuff(type))(position)
 	}
 
 	// 创建门
 	initDoor() {
 		const { destructibleWall } = this.levelData
 		const index = Math.floor(Math.random() * destructibleWall.length)
-		this.door = new Door(destructibleWall[index])
+		new Door(destructibleWall[index])
 	}
 
 	// 创建角色
 	initPerson() {
-		this.person = new Person([1, 2])
+		this.person = new Person([1, 2], this.personLife)
+	}
+
+	onGameOver(life) {
+		if(this.loading) return 
+		this.loading = true 
+		this.personLife = typeof life === 'number' ? life : (this.personLife - 1)
+		this.destroy()
+		if(this.personLife !== 0) {
+			createGamePrompt({
+				content: `你已阵亡！（还剩${this.personLife}次机会）`,
+				onRestart: this.restart.bind(this),
+				timeout: 3000 
+			})
+		}else {
+			createGamePrompt({
+				content: `你已阵亡！点我继续(*^▽^*)`,
+				onRestart: this.restart.bind(this),
+				timeout: -1 
+			})	
+		}
+	}
+
+	onNext() {
+		this.destroy()
+		if(this.level === LEVEL_MAP.length) {
+			createGamePrompt({
+				content: '恭喜通关！！！点我重玩(*^▽^*)',
+				onRestart: () => {
+					this.level = 1
+					this.personLife = 3 
+					this.restart()
+				},
+				timeout: -1 
+			})	
+		}else {
+			this.level ++
+			createGamePrompt({
+				content: `恭喜通过本关！！即将进入下一关`,
+				onRestart: this.restart.bind(this),
+				timeout: 3000 
+			})	
+		}
+	}
+
+	eventBind() {
+		EventEmitter.addListener(EMITTER_GAME_OVER, this.onGameOver, this)
+		EventEmitter.addListener(EMITTER_NEXT_OP, this.onNext, this)
+	}
+
+	eventUnBind() {
+		EventEmitter.removeListener(EMITTER_GAME_OVER, this.onGameOver, this)
+		EventEmitter.removeListener(EMITTER_NEXT_OP, this.onNext, this)
 	}
 
 	start() {
@@ -802,20 +1000,13 @@ class Game {
 	}
 
 	destroy() {
-		this.wall.forEach((item) => item.destroy())
-		this.destructibleWall.forEach((item) => item.destroy())
-		this.door.destroy()
-		this.person.destroy()
-
-		this.wall = []
-		this.destructibleWall = []
-		this.door = undefined
-		this.person = undefined
+		EventEmitter.emit(EMITTER_DESTROY)
 	}
 
 	restart() {
+		this.loading = false 
 		this.destroy()
-		this.level = 1
+		this.eventUnBind()
 		this.init()
 	}
 }
