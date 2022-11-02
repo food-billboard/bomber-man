@@ -1,6 +1,31 @@
 // Function
 
 function toBeGod() {}
+function stopGame() {
+	isStart = !isStart
+	StopButton.innerHTML = isStart ? '暂停' : '开始';
+	startPrompt && startPrompt();
+	if(!isStart) {
+		startPrompt = createGamePrompt({
+			content: '游戏暂停(*^▽^*)',
+			timeout: -1,
+			onRestart: () => {
+				startPrompt && startPrompt()
+				isStart = true 
+				EventEmitter.emit(EMITTER_START_OP)
+			}
+		})
+	}
+	EventEmitter.emit(EMITTER_START_OP)
+}
+function getInfo(target) {
+	return {
+		x: target.x(),
+		y: target.y(),
+		width: target.width(),
+		height: target.height(),
+	}
+}
 
 // type
 // LoopBuff TimeBoomBuff CrossWallBuff SuperBoomBuff
@@ -41,6 +66,8 @@ const DropButton = query(".action-j")
 const BoomButton = query(".action-k")
 const StopButton = query(".action-p")
 
+const TimeContent = query('.banner .banner-time')
+
 document.addEventListener('keydown', (e) => {
 	const key = e.key.toUpperCase() 
 	const moveMap = {
@@ -62,7 +89,11 @@ document.addEventListener('keyup', (e) => {
 		P: EMITTER_START_OP,
 	}
 	if(Object.keys(actionMap).includes(key)) {
-		EventEmitter.emit(actionMap[key])
+		if(key === 'P') {
+			stopGame()
+		}else {
+			EventEmitter.emit(actionMap[key])
+		}
 	}
 })
 
@@ -96,9 +127,7 @@ DropButton.addEventListener('click', () => {
 BoomButton.addEventListener('click', () => {
 	EventEmitter.emit(EMITTER_BOOM_OP)
 })
-StopButton.addEventListener('click', () => {
-	EventEmitter.emit(EMITTER_START_OP)
-})
+StopButton.addEventListener('click', stopGame)
 
 let CANVAS_WIDTH = 800 
 let CANVAS_HEIGHT = CANVAS_WIDTH * 13 / 33
@@ -116,6 +145,9 @@ const Layer = new Konva.Layer();
 Stage.add(Layer);
 
 let idCounter = 0
+// 游戏状态
+let isStart = true  
+let startPrompt 
 
 // 销毁
 const EMITTER_DESTROY = "EMITTER_DESTROY"
@@ -137,6 +169,8 @@ const EMITTER_RIGHT_OP = "EMITTER_RIGHT_OP"
 const EMITTER_TOP_OP = "EMITTER_TOP_OP"
 // 下移动操作
 const EMITTER_BOTTOM_OP = "EMITTER_BOTTOM_OP"
+// 炸弹创建
+const EMITTER_BOOM_CREATE = "EMITTER_BOOM_CREATE"
 // 放炸弹操作
 const EMITTER_DROP_OP = "EMITTER_DROP_OP"
 // 释放炸弹操作
@@ -145,6 +179,8 @@ const EMITTER_BOOM_OP = "EMITTER_BOOM_OP"
 const EMITTER_START_OP = "EMITTER_START_OP"
 // 进入下一关操作
 const EMITTER_NEXT_OP = "EMITTER_NEXT_OP"
+// 全局动画
+const EMITTER_TIMER = "EMITTER_TIMER"
 const EventEmitter = new EventEmitter3()
 
 // Object
@@ -166,16 +202,26 @@ class CoreObject {
 	y = 0
 	instance 
 	loading = false 
+	disabled = false 
 	id
 
 	create() {}
 
+	actionWrapper(action) {
+		const that = this 
+		return function(...args) {
+			if(that.disabled) return 
+			action.call(that, ...args)
+		}
+	}
+
 	eventBind() {
 		EventEmitter.once(EMITTER_DESTROY, this.destroy)
+		EventEmitter.addListener(EMITTER_START_OP, this.onStart, this)
 	}
 
 	eventUnBind() {
-
+		EventEmitter.removeListener(EMITTER_START_OP, this.onStart, this)
 	}
 
 	updatePosition(position) {
@@ -186,19 +232,21 @@ class CoreObject {
 		this.instance && this.instance.absolutePosition({ x: this.x * UNIT, y: this.y * UNIT })
 	}
 
-	update() {}
-
 	destroy() {
 		this.instance && this.instance.destroy()
 		this.eventUnBind()
 	}
 
-	stop() {
+	onStart() {
+		isStart ? this.start() : this.stop()
+	}
 
+	stop() {
+		this.disabled = true 
 	}
 
 	start() {
-
+		this.disabled = false 
 	}
 
 }
@@ -209,7 +257,9 @@ class Person extends CoreObject {
 	constructor(position, life) {
 		super(position)
 		this.create()
-		this.life = life 
+		this.life = life
+		this.move = this.actionWrapper(this.move) 
+		this.dropBoom = this.actionWrapper(this.dropBoom)
 		this.eventBind()
 	}
 
@@ -271,7 +321,7 @@ class Person extends CoreObject {
 				if(knocked && knockType !== 'BUFF') {
 					switch(knockType) {
 						case 'MONSTER':
-						case 'BOOM':
+						case 'BOOM-D':
 							this.die()
 							break 
 						default:
@@ -286,7 +336,21 @@ class Person extends CoreObject {
 	}
 
 	dropBoom() {
-		this.boom.create({ x: this.x, y: this.y })
+		const position = {
+			x: this.x, 
+			y: this.y
+		}
+		this.boom.create(position)
+		this.move({
+			deltaX: this.x,
+			deltaY: this.y 
+		})
+		const counter = EventEmitter.listenerCount(EMITTER_DROP_OP)
+		EventEmitter.emit(EMITTER_BOOM_CREATE, position, () => {
+			if(counter === 0) {
+
+			}
+		})
 	}
 
 	boomedBoom() {
@@ -301,6 +365,10 @@ class Person extends CoreObject {
 		onKnock(this.type, isKnock)
 	}
 
+	onBoomCreate() {
+
+	}
+
 	eventBind() {
 		super.eventBind()
 		EventEmitter.addListener(EMITTER_LEFT_OP, this.move, this)
@@ -313,6 +381,7 @@ class Person extends CoreObject {
 
 		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 
+		EventEmitter.addListener(EMITTER_BOOM_CREATE, this.onBoomCreate, this)
 	}
 
 	eventUnBind() {
@@ -326,6 +395,8 @@ class Person extends CoreObject {
 		EventEmitter.removeListener(EMITTER_BOOM_OP, this.boomedBoom, this)
 
 		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
+
+		EventEmitter.removeListener(EMITTER_BOOM_CREATE, this.onBoomCreate, this)
 
 	}
 
@@ -352,10 +423,10 @@ class Boom extends CoreObject {
 	hugeState = false
 
 	onBoom 
-	timeout 
+	// timeing wait boom destroy 
+	timeStep = 0
 	timeoutStart
 	timeoutRest = 5000 
-	timer 
 
 	initBoomInstace
 	boomVertical 
@@ -363,19 +434,21 @@ class Boom extends CoreObject {
 
 	onTargetMove = (instance, position, onKnock) => {
 		const isKnock = knockJudge(position, { x: this.x, y: this.y })
-		onKnock(this.type, isKnock)
+		onKnock(this.type + (this.timeStep != 2 ? '-L' : '-D'), isKnock)
 	}
 
 	eventBind = () => {
 		super.eventBind()
 		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
+		EventEmitter.addListener(EMITTER_TIMER, this.animation, this)
 	}
 
 	eventUnBind = () => {
 		super.eventBind()
 		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
+		EventEmitter.removeListener(EMITTER_TIMER, this.animation, this)
 	}
 
 	create() {
@@ -388,102 +461,153 @@ class Boom extends CoreObject {
 			fill: '#CCFFFF',
 		})
 		Layer.add(this.initBoomInstace)
-		if(!this.timeState) this.boom()
+		this.timeoutStart = Date.now() 
+		if(this.timeState) this.timeStep = 1
+	}
+
+	animation() {
+		if(this.timeStep === 0) {
+			this.timeoutRest -= (Date.now() - this.timeoutStart)
+			this.timeoutStart = Date.now() 
+			if(this.timeoutRest <= 0) this.timeStep += 2
+		}else if(this.timeStep === 2) {
+			this.immediateBoom()
+		}
 	}
 
 	// 立刻爆炸
 	immediateBoom() {
-		console.log(this, 22222)
-		this.onBoom(this.id)
-		return 
-		this.timer = setInterval(() => {
-			// init 
-			if(!this.boomVertical) {
-				this.initBoomInstace.destroy()
-				const commonState = {
-					boom: false,
-					x: this.x,
-					y: this.y,
+		// init 
+		if(!this.boomVertical) {
+			this.initBoomInstace.destroy()
+			this.boomVertical = {
+				boomStart: false,
+				boomEnd: false,
+				instance: new Konva.Rect({
+					x: this.x * UNIT,
+					y: this.y * UNIT,
 					width: UNIT,
-					height: UNIT,fill
-				}
-				this.boomVertical = {
-					...commonState,
-					instance: new Konva.Rect({
-						x: commonState.x * UNIT,
-						y: commonState.y * UNIT
-					})
-				}
-				this.boomHorizontal = {
-					...commonState,
-					instance: new Konva.Rect({
-						x: commonState.x * UNIT,
-						y: commonState.y * UNIT
-					})
-				}
-				Layer.add(this.boomVertical.instance)
-				Layer.add(this.boomHorizontal.instance)
-				return 
-			}
-			// destroy 
-			if(this.boomVertical.boom && this.boomHorizontal.boom) {
-				clearInterval(this.timer)
-				this.boomVertical.instance.destroy()
-				this.boomHorizontal.instance.destroy()
-				this.onBoom(this.id)
-				return 
-			}
-			// update 
-			if(!this.boomVertical.boom) {
-				this.boomVertical.x = 
-				this.boomVertical.instance.absolutePosition({
-					
+					height: UNIT
 				})
 			}
-			if(!this.boomHorizontal.boom) {
-
+			this.boomHorizontal = {
+				boomStart: false,
+				boomEnd: false,
+				instance: new Konva.Rect({
+					x: this.x * UNIT,
+					y: this.y * UNIT,
+					width: UNIT,
+					height: UNIT
+				})
 			}
-		}, 1000 / 60)
-	}
-
-	// 炸弹爆炸
-	boom() {
-		this.timeoutStart = Date.now() 
-		this.timeout = setTimeout(() => {
-			this.immediateBoom()
-			this.timeoutRest = 0 
-		}, this.timeoutRest)
+			Layer.add(this.boomVertical.instance)
+			Layer.add(this.boomHorizontal.instance)
+			return 
+		}
+		// destroy 
+		if(this.boomVertical.boomStart && this.boomHorizontal.boomStart && this.boomVertical.boomEnd && this.boomHorizontal.boomEnd) {
+			this.timeStep = 3 
+			this.boomVertical.instance.destroy()
+			this.boomHorizontal.instance.destroy()
+			this.onBoom(this.id)
+			return 
+		}
+		// update 
+		if(!this.boomVertical.boomStart || !this.boomVertical.boomEnd) {
+			let newPosition = getInfo(this.boomVertical.instance)
+			if(!this.boomVertical.boomStart) {
+				const templatePosition = {
+					...newPosition,
+					y: newPosition.y - UNIT,
+					height: newPosition.height + UNIT
+				}
+				const x = Math.floor(templatePosition.x / UNIT)
+				const y = Math.floor(templatePosition.y / UNIT)
+				this.boomVertical.boomStart = knockWall[x, y]
+				if(!this.boomVertical.boomStart) {
+					newPosition = {
+						...newPosition,
+						...templatePosition
+					}
+				}
+			}
+			if(!this.boomVertical.boomEnd) {
+				const templatePosition = {
+					...newPosition,
+					height: newPosition.height + UNIT
+				}
+				const x = Math.floor(templatePosition.x / UNIT)
+				const y = Math.floor(templatePosition.y / UNIT)
+				const height = Math.floor(templatePosition.height / UNIT)
+				this.boomVertical.boomEnd = knockWall[x, y + height - 1]
+				if(!this.boomVertical.boomEnd) {
+					newPosition = {
+						...newPosition,
+						...templatePosition
+					}
+				}
+			}
+			const { y, height } = newPosition
+			this.boomVertical.instance.y(y * UNIT)
+			this.boomVertical.instance.height(height * UNIT)
+		}
+		if(!this.boomHorizontal.boomStart || !this.boomHorizontal.boomEnd) {
+			let newPosition = getInfo(this.boomHorizontal.instance)
+			if(!this.boomHorizontal.boomStart) {
+				const templatePosition = {
+					...newPosition,
+					x: newPosition.x - UNIT,
+					width: newPosition.width + UNIT
+				}
+				const x = Math.floor(templatePosition.x / UNIT)
+				const y = Math.floor(templatePosition.y / UNIT)
+				this.boomHorizontal.boomStart = knockWall[x, y]
+				if(!this.boomHorizontal.boomStart) {
+					newPosition = {
+						...newPosition,
+						...templatePosition
+					}
+				}
+			}
+			if(!this.boomHorizontal.boomEnd) {
+				const templatePosition = {
+					...newPosition,
+					width: newPosition.width + UNIT
+				}
+				const x = Math.floor(templatePosition.x / UNIT)
+				const y = Math.floor(templatePosition.y / UNIT)
+				const width = Math.floor(templatePosition.width / UNIT)
+				this.boomHorizontal.boomEnd = knockWall[x + width - 1, y]
+				if(!this.boomHorizontal.boomEnd) {
+					newPosition = {
+						...newPosition,
+						...templatePosition
+					}
+				}
+			}
+			const { x, width } = newPosition
+			this.boomHorizontal.instance.x(x * UNIT)
+			this.boomHorizontal.instance.width(width * UNIT)
+		}
 	}
 
 	destroy() {
 		super.destroy() 
-		this.initBoomInstace.destroy()
-	}
-
-	stop() {
-		if(this.timeoutRest !== 0) {
-			this.timeoutRest = Date.now() - this.timeoutStart
-			clearTimeout(this.timeout)
-		}
-		if(this.timeState) {
-			clearInterval(this.timer)
-		}
+		try {
+			this.initBoomInstace.destroy()
+			this.boomVertical.instance.destroy() 
+			this.boomHorizontal.instance.destroy()
+		}catch(err) {}
 	}
 }
 
 class BoomFactory {
 
-	constructor() {
-		
-	}
-
 	multipleState = false
 	timeState = false
 	hugeState = false
 
-	boomMap = {
-
-	}
+	boomMap = {}
 
 	onBoom(id) {
 		delete this.boomMap[id]
@@ -649,14 +773,18 @@ class Wall extends CoreObject {
 	type = 'WALL'
 
 	create() {
-		this.instance = new Konva.Rect({
-			x: this.x * UNIT,
-			y: this.y * UNIT,
-			width: UNIT,
-			height: UNIT,
-			fill: this.destructible ? 'blue' : 'yellow',
-		})
-		Layer.add(this.instance)
+		const image = new Image() 
+		image.src = this.destructible ? "./images/destructible.jpg" : "./images/un-destructible.jpg"
+		image.onload = () => {
+			this.instance = new Konva.Rect({
+				x: this.x * UNIT,
+				y: this.y * UNIT,
+				width: UNIT,
+				height: UNIT,
+				fillPatternImage: image,
+			})
+			Layer.add(this.instance)
+		}
 	}
 
 	onTargetMove(instance, position, onKnock) {
@@ -684,8 +812,6 @@ class Monster extends CoreObject {
 		super(position)
 		this.create(image)
 		this.eventBind()
-		this.timer = setInterval(this.move, 1000 / 60)
-		this.move = this.move.bind(this)
 	}
 
 	type = "MONSTER"
@@ -699,8 +825,6 @@ class Monster extends CoreObject {
 	direction 
 	// 运动距离  
 	moveCounter = 0 
-
-	timer  
 
 	create(image) {
 		this.instance = new Konva.Rect({
@@ -755,14 +879,24 @@ class Monster extends CoreObject {
 			}
 			if(counter === 0) {
 				if(knocked) {
-					console.log('monster knocked', knockType)
-					this.moveCounter = 0
+					switch(type) {
+						case 'BOOM-D':
+							this.destroy()
+							break 
+						default: 
+							console.log('monster knocked', knockType)
+							this.moveCounter = 0		
+					}
 				}else {
 					this.updatePosition(newPosition)		
 				}
 				this.loading = false 
 			}
 		})
+	}
+
+	onCreateBoom(position) {
+
 	}
 
 	onTargetMove(instance, position, onKnock) {
@@ -776,28 +910,16 @@ class Monster extends CoreObject {
 		super.eventBind()
 		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 		EventEmitter.addListener(EMITTER_MONSTER_CREATE, this.createMonster, this)
+		EventEmitter.addListener(EMITTER_TIMER, this.move, this)
+		EventEmitter.addListener(EMITTER_BOOM_CREATE, this.onCreateBoom, this)
 	}
 
 	eventUnBind() {
 		super.eventUnBind()
 		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 		EventEmitter.removeListener(EMITTER_MONSTER_CREATE, this.createMonster, this)
-	}
-
-	start() {
-		super.start()
-		this.timer = setInterval(this.move, 1000 / 60)
-	}
-
-	stop() {
-		super.stop()
-		clearInterval(this.time)
-	}
-
-	destroy() {
-		super.destroy()
-		clearInterval(this.timer)
-		super.destroy()
+		EventEmitter.removeListener(EMITTER_TIMER, this.move, this)
+		EventEmitter.removeListener(EMITTER_BOOM_CREATE, this.onCreateBoom, this)
 	}
 	
 }
@@ -873,6 +995,7 @@ function createGamePrompt({
 			onRestart()
 		}, timeout)
 	}
+	return group.destroy.bind(group)
 }
 
 class Game {
@@ -881,8 +1004,9 @@ class Game {
 		this.eventBind()
 	}
 
+	animationTimer 
 	timer
-	timeout = 240
+	timeout = 480
 
 	level = 1
 	person
@@ -903,11 +1027,7 @@ class Game {
 		buff.forEach(this.createBuff)
 		this.initDoor()
 		this.initPerson()
-
-		// setTimeout(() => {
-		// 	this.onNext()
-		// }, 5000)
-
+		this.start()
 	}
 
 	// 创建障碍墙
@@ -951,7 +1071,10 @@ class Game {
 		}else {
 			createGamePrompt({
 				content: `你已阵亡！点我继续(*^▽^*)`,
-				onRestart: this.restart.bind(this),
+				onRestart: () => {
+					this.personLife = 3 
+					this.restart()
+				},
 				timeout: -1 
 			})	
 		}
@@ -979,24 +1102,40 @@ class Game {
 		}
 	}
 
+	onStart() {
+		isStart ? this.start() : this.stop()
+	}
+
 	eventBind() {
 		EventEmitter.addListener(EMITTER_GAME_OVER, this.onGameOver, this)
 		EventEmitter.addListener(EMITTER_NEXT_OP, this.onNext, this)
+		EventEmitter.addListener(EMITTER_START_OP, this.onStart, this)
 	}
 
 	eventUnBind() {
 		EventEmitter.removeListener(EMITTER_GAME_OVER, this.onGameOver, this)
 		EventEmitter.removeListener(EMITTER_NEXT_OP, this.onNext, this)
+		EventEmitter.removeListener(EMITTER_START_OP, this.onStart, this)
 	}
 
 	start() {
+		TimeContent.innerHTML = this.timeout
 		this.timer = setInterval(() => {
 			this.timeout--
+			TimeContent.innerHTML = this.timeout
+			if(this.timeout === 0) {
+				this.stop()
+				this.onGameOver()
+			}
 		}, 1000)
+		this.animationTimer = setInterval(() => {
+			EventEmitter.emit(EMITTER_TIMER)
+		}, 1000 / 60)
 	}
 
 	stop() {
 		clearInterval(this.timer)
+		clearInterval(this.animationTimer)
 	}
 
 	destroy() {
@@ -1005,6 +1144,8 @@ class Game {
 
 	restart() {
 		this.loading = false 
+		this.timeout = 480 
+		this.stop()
 		this.destroy()
 		this.eventUnBind()
 		this.init()

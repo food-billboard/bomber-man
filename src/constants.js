@@ -50,6 +50,6 @@ const LEVEL_MAP = [
       ["LoopBuff", 8, 7],
       ["TimeBoomBuff", 20, 3],
     ],
-    time: 240 
+    time: 480 
   }
 ]
