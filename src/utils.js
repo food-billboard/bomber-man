@@ -2,6 +2,20 @@ function query(queryString) {
   return document.querySelector(queryString)
 }
 
+const IMAGE_MAP = {
+
+}
+
+function loader(image, callback) {
+  if(IMAGE_MAP[image]) return callback(IMAGE_MAP[image])
+  const dom = new Image() 
+  dom.src = image 
+  dom.onload = () => {
+    IMAGE_MAP[image] = dom 
+    callback(dom)
+  }
+}
+
 // 保留4位小数
 function toFixed4(number) {
   return parseFloat(number.toFixed(4))

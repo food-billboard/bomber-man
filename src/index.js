@@ -272,7 +272,7 @@ class Person extends CoreObject {
 	life = 3
 
 	create() {
-		this.instance = new Konva.Rect({
+		this.instance = new Konva.Image({
 			x: this.x * UNIT,
 			y: this.y * UNIT,
 			width: UNIT,
@@ -645,7 +645,7 @@ class Buff extends CoreObject {
 	 type = 'BUFF'
 
 	create(image) {
-		this.instance = new Konva.Rect({
+		this.instance = new Konva.Image({
 			x: this.x * UNIT,
 			y: this.y * UNIT,
 			width: UNIT,
@@ -739,7 +739,7 @@ class SuperBoomBuff extends Buff {
 class Door extends Buff {
 
 	constructor(position) {
-		super(position, '#3f0')
+		super(position, DOOR)
 	}
 
 	type = 'DOOR'
@@ -773,10 +773,8 @@ class Wall extends CoreObject {
 	type = 'WALL'
 
 	create() {
-		const image = new Image() 
-		image.src = this.destructible ? "./images/destructible.jpg" : "./images/un-destructible.jpg"
-		image.onload = () => {
-			this.instance = new Konva.Rect({
+		loader(this.destructible ? DESTRUCTIBLE_WALL : UN_DESTRUCTIBLE_WALL, (image) => {
+			this.instance = new Konva.Image({
 				x: this.x * UNIT,
 				y: this.y * UNIT,
 				width: UNIT,
@@ -784,7 +782,7 @@ class Wall extends CoreObject {
 				fillPatternImage: image,
 			})
 			Layer.add(this.instance)
-		}
+		})
 	}
 
 	onTargetMove(instance, position, onKnock) {
@@ -817,7 +815,7 @@ class Monster extends CoreObject {
 	type = "MONSTER"
 
 	// 移动速度
-	speed = 10
+	speed = 1
 	// 可穿越
 	crossable = false
 
@@ -827,15 +825,16 @@ class Monster extends CoreObject {
 	moveCounter = 0 
 
 	create(image) {
-		this.instance = new Konva.Rect({
-			x: this.x * UNIT,
-			y: this.y * UNIT,
-			width: UNIT,
-			height: UNIT,
-			fill: image,
-			// 后期换成图片
+		loader(image, image => {
+			this.instance = new Konva.Image({
+				x: this.x * UNIT,
+				y: this.y * UNIT,
+				width: UNIT,
+				height: UNIT,
+				image: image,
+			})
+			Layer.add(this.instance)
 		})
-		Layer.add(this.instance)
 	}
 
 	move = () => {
@@ -850,8 +849,8 @@ class Monster extends CoreObject {
 		}
 		this.moveCounter -- 
 		const [ deltaX, deltaY ] = this.direction
-		const newX = this.x + deltaX * MOVE_UNIT / UNIT
-		const newY = this.y + deltaY * MOVE_UNIT / UNIT
+		const newX = this.x + deltaX * MOVE_UNIT * this.speed / UNIT
+		const newY = this.y + deltaY * MOVE_UNIT * this.speed / UNIT
 		const newPosition = {
 			x: toFixed4(newX),
 			y: toFixed4(newY)
@@ -874,8 +873,10 @@ class Monster extends CoreObject {
 		EventEmitter.emit(EMITTER_MONSTER_MOVE, this, newPosition, (type, isKnock) => {
 			counter -- 
 			if(isKnock) {
-				knocked = true 
-				knockType = type 
+				if(!this.crossable || type !== 'WALL') {
+					knocked = true 
+					knockType = type 
+				}
 			}
 			if(counter === 0) {
 				if(knocked) {
@@ -927,7 +928,7 @@ class Monster extends CoreObject {
 // 气球怪
 class BalloonMonster extends Monster {
 	constructor(position) {
-		super(position, '#f0f')
+		super(position, BALLOON_MONSTER)
 	}	
 }
 
@@ -935,15 +936,15 @@ class BalloonMonster extends Monster {
 class CrossWallMonster extends Monster {
 	crossable = true
 	constructor(position) {
-		super(position, '#ef0')
+		super(position, CROSS_MONSTER)
 	}	
 }
 
 // 高速怪
 class SpeedMonster extends Monster {
-	speed = this.speed * 2
+	speed = this.speed * 3
 	constructor(position) {
-		super(position, '#0ff')
+		super(position, SPEED_MONSTER)
 	}
 }
 
