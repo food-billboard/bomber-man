@@ -21,10 +21,17 @@ function toFixed4(number) {
   return parseFloat(number.toFixed(4))
 }
 
+function getWidth(target) {
+  return target.width || 1
+}
+function getHeight(target) {
+  return target.height || 1
+}
+
 // 碰撞检测
 function knockJudge(origin, target, coincide) {
   if(!!coincide) return origin.x === target.x && origin.y === target.y
-  return origin.x < target.x + 1 && origin.x + 1 > target.x && origin.y < target.y + 1 && origin.y + 1 > target.y 
+  return origin.x < target.x + getWidth(target) && origin.x + getWidth(origin) > target.x && origin.y < target.y + getHeight(target) && origin.y + getHeight(origin) > target.y 
 }
 
 // 碰撞障碍墙检测
