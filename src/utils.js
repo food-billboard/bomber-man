@@ -10,6 +10,9 @@ function loader(image, callback) {
   if(IMAGE_MAP[image]) return callback(IMAGE_MAP[image])
   const dom = new Image() 
   dom.src = image 
+  dom.width = 10 
+  dom.height = 10
+  dom.style.display = 'block'
   dom.onload = () => {
     IMAGE_MAP[image] = dom 
     callback(dom)

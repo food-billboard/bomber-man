@@ -3,7 +3,7 @@
 function toBeGod() {}
 function stopGame() {
 	isStart = !isStart
-	StopButton.innerHTML = isStart ? "暂停" : "开始"
+	StopButton.innerHTML = isStart ? "⏺ " : "⏩"
 	startPrompt && startPrompt()
 	if (!isStart) {
 		startPrompt = createGamePrompt({
@@ -74,7 +74,10 @@ const DropButton = query(".action-j")
 const BoomButton = query(".action-k")
 const StopButton = query(".action-p")
 
-const TimeContent = query(".banner .banner-time")
+const TimeContent = query(".banner .banner-title-time")
+const LevelContent = query(".banner .banner-title-level")
+
+const IS_MOBILE = isMobile.any 
 
 function CreateKeyboardAnimation() {
 	let pressMap = {
@@ -129,6 +132,22 @@ function CreateKeyboardAnimation() {
 	}
 
 }
+function buttonActionBind(target, key) {
+	const start = IS_MOBILE ? 'touchstart' : 'mousedown'
+	const end = IS_MOBILE ? 'touchend' : 'mouseup'
+	target.addEventListener(start, (e) => {
+		e.preventDefault()
+		if(!game.loading) {
+			createKeyboardAnimation.press(key)
+			window.addEventListener(end, (e) => {
+				e.preventDefault()
+				if(!game.loading) {
+					createKeyboardAnimation.up(key)
+				}
+			})
+		}
+	})
+}
 
 document.addEventListener("keydown", (e) => {
 	const key = e.key.toUpperCase()
@@ -156,14 +175,11 @@ document.addEventListener("keyup", (e) => {
 	}
 })
 
-LeftMoveButton.addEventListener("mousedown", () => {})
-RightMoveButton.addEventListener("mousedown", () => {})
-TopMoveButton.addEventListener("mousedown", () => {})
-BottomMoveButton.addEventListener("mousedown", () => {})
-LeftMoveButton.addEventListener("mouseup", () => {})
-RightMoveButton.addEventListener("mouseup", () => {})
-TopMoveButton.addEventListener("mouseup", () => {})
-BottomMoveButton.addEventListener("mouseup", () => {})
+buttonActionBind(LeftMoveButton, 'A')
+buttonActionBind(RightMoveButton, 'D')
+buttonActionBind(TopMoveButton, 'W')
+buttonActionBind(BottomMoveButton, 'S')
+
 DropButton.addEventListener("click", () => {
 	EventEmitter.emit(EMITTER_DROP_OP)
 })
@@ -172,7 +188,7 @@ BoomButton.addEventListener("click", () => {
 })
 StopButton.addEventListener("click", stopGame)
 
-let CANVAS_WIDTH = 800
+let CANVAS_WIDTH = document.documentElement.offsetWidth
 let CANVAS_HEIGHT = (CANVAS_WIDTH * 13) / 33
 const UNIT = CANVAS_WIDTH / 33
 // 单步移动
@@ -185,7 +201,18 @@ const Stage = new Konva.Stage({
 })
 
 const Layer = new Konva.Layer()
+const MonsterLayer = new Konva.Layer()
+const BoomLayer = new Konva.Layer() 
+const PromptLayer = new Konva.Layer()
+
 Stage.add(Layer)
+Stage.add(MonsterLayer)
+Stage.add(BoomLayer)
+Stage.add(PromptLayer)
+
+PromptLayer.zIndex(3)
+MonsterLayer.zIndex(2)
+BoomLayer.zIndex(1)
 
 let idCounter = 0
 // 游戏状态
@@ -297,6 +324,66 @@ class CoreObject {
 	}
 }
 
+class DestroyAnimation {
+
+	constructor(options) {
+		this.options = options
+	}
+
+	// normal die destroy onDestroy instance 
+	options = {}
+
+	lifeCycle = 1
+
+	get isAlive() {
+		return this.lifeCycle === 1
+	}
+
+	loop() {
+		if(this.lifeCycle >= 2 && this.lifeCycle < 100) {
+			this.die()
+		}else if(this.lifeCycle >= 100) {
+			this.destroying()
+		}
+		return !this.isAlive
+	}
+
+	over() {
+		this.lifeCycle = 2
+	}
+
+	// 死亡
+	die() {
+		if(!this.options.die) {
+			this.lifeCycle = 100 
+			return 
+		}
+		if(this.lifeCycle === 2) {
+			loader(this.options.die, (image) => {
+				this.options.instance.image(image)
+			})
+		}
+		this.lifeCycle ++
+	}
+
+	// 消失
+	destroying() {
+		const destroyImageLength = this.options.destroy.length
+		if(this.lifeCycle > 120 + 20 * destroyImageLength) {
+			return this.options.onDestroy()
+		}
+		const index = (this.lifeCycle - 100) / 20 
+		const targetImage = this.options.destroy[index]
+		if(targetImage) {
+			loader(targetImage, (image) => {
+				this.options.instance.image(image)
+			})
+		}
+		this.lifeCycle ++
+	}
+
+}
+
 // 角色
 class Person extends CoreObject {
 	constructor(position, life) {
@@ -355,7 +442,6 @@ class Person extends CoreObject {
 	}
 
 	move(delta) {
-		console.log(22222222)
 		if (this.loading) return
 		this.loading = true
 		const { deltaX, deltaY } = delta
@@ -518,7 +604,7 @@ class Fire extends CoreObject {
 			height: UNIT,
 			fill: this.align === "vertical" ? "yellow" : "black",
 		})
-		Layer.add(this.instance)
+		BoomLayer.add(this.instance)
 	}
 
 	get updatePosition() {
@@ -828,8 +914,7 @@ class Buff extends CoreObject {
 		// 		y: this.y * UNIT,
 		// 		width: UNIT,
 		// 		height: UNIT,
-		// 		// 后面改成图片
-		// 		fill: image,
+		// 		image,
 		// 	})
 		// 	Layer.add(this.instance)
 		// })
@@ -940,6 +1025,7 @@ class Wall extends CoreObject {
 	constructor(position, destructible) {
 		super(position)
 		this.destructible = destructible
+		this.loading = this.destructible
 		this.create()
 		this.destructible && this.eventBind()
 	}
@@ -950,6 +1036,18 @@ class Wall extends CoreObject {
 	position = []
 	type = "WALL"
 
+	destroyAnimation
+	loading = true 
+	images = {
+		destroy: [
+			BOOM,
+			BALLOON_MONSTER,
+			CROSS_MONSTER,
+			SPEED_MONSTER,
+			DOOR
+		],
+	}
+
 	create() {
 		loader(
 			this.destructible ? DESTRUCTIBLE_WALL : UN_DESTRUCTIBLE_WALL,
@@ -959,17 +1057,37 @@ class Wall extends CoreObject {
 					y: this.y * UNIT,
 					width: UNIT,
 					height: UNIT,
-					fillPatternImage: image,
+					image,
 				})
 				Layer.add(this.instance)
+				if(this.destructible) {
+					this.destroyAnimation = new DestroyAnimation({
+						...this.images,
+						onDestroy: this.destroy,
+						instance: this.instance
+					})
+					this.loading = false 
+				}
 			}
 		)
 	}
 
+	animation() {
+		this.destroyAnimation && this.destroyAnimation.loop()
+	}
+
 	onTargetMove(instance, position, onKnock) {
+		if(this.loading || !this.destroyAnimation.isAlive) return onKnock(this.type, false)
 		const isKnock = knockJudge({ x: this.x, y: this.y }, { ...position })
 		onKnock(this.type, isKnock)
-		if(isKnock && instance.type === 'FIRE') this.destroy()
+		if(isKnock && instance.type === 'FIRE') {
+			this.nextEventBind()
+			this.destroyAnimation.over()
+		}
+	}
+
+	nextEventBind() {
+		EventEmitter.addListener(EMITTER_TIMER, this.animation, this)
 	}
 
 	eventBind() {
@@ -984,6 +1102,7 @@ class Wall extends CoreObject {
 		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 		EventEmitter.removeListener(EMITTER_BOOM_BOOMING, this.onTargetMove, this)
+		EventEmitter.removeListener(EMITTER_TIMER, this.animation, this)
 	}
 
 	destroy() {
@@ -994,11 +1113,24 @@ class Wall extends CoreObject {
 }
 
 class Monster extends CoreObject {
-	constructor(position, image) {
+	constructor(position, images) {
 		super(position)
-		this.create(image)
+		this.create(images.normal)
+		this.images = {
+			...this.images,
+			...images 
+		}
 		this.eventBind()
 	}
+
+	// nomal die destroy 
+	// 生命周期中的一系列图片
+	images = {
+		destroy: [
+			
+		],
+	}
+	destroyAnimation 
 
 	type = "MONSTER"
 
@@ -1013,6 +1145,8 @@ class Monster extends CoreObject {
 	moveCounter = 0
 	animationIndex = 0
 
+	loading = true 
+
 	create(image) {
 		loader(image, (image) => {
 			this.instance = new Konva.Image({
@@ -1020,9 +1154,15 @@ class Monster extends CoreObject {
 				y: this.y * UNIT,
 				width: UNIT,
 				height: UNIT,
-				image: image,
+				image,
 			})
-			Layer.add(this.instance)
+			MonsterLayer.add(this.instance)
+			this.destroyAnimation = new DestroyAnimation({
+				...this.images,
+				onDestroy: this.destroy,
+				instance: this.instance
+			})
+			this.loading = false 
 		})
 	}
 
@@ -1037,8 +1177,7 @@ class Monster extends CoreObject {
 	}
 
 	move = () => {
-		// this._animation()
-		if (this.loading) return
+		if (this.loading || (this.destroyAnimation && this.destroyAnimation.loop())) return
 		this.loading = true
 		if (this.moveCounter === 0) {
 			// left top right bottom
@@ -1091,8 +1230,9 @@ class Monster extends CoreObject {
 				if (counter === 0) {
 					if (knocked) {
 						console.log("monster knocked", knockType)
-						if(type === 'FIRE') {
-							this.destroy()
+						if(knockType === 'FIRE') {
+							// 死亡
+							this.destroyAnimation.over()
 						}
 						this.moveCounter = 0
 					} else {
@@ -1107,9 +1247,12 @@ class Monster extends CoreObject {
 	onCreateBoom(position) {}
 
 	onTargetMove(instance, position, onKnock) {
+		if(this.loading || !this.destroyAnimation.isAlive) return onKnock(this.type, false)
 		const isKnock = knockJudge(position, { x: this.x, y: this.y })
 		onKnock(this.type, isKnock)
-		if (instance.type === "FIRE" && isKnock) this.destroy()
+		if (instance.type === "FIRE" && isKnock) {
+			this.destroyAnimation.over()
+		}
 	}
 
 	createMonster() {
@@ -1137,12 +1280,13 @@ class Monster extends CoreObject {
 		EventEmitter.removeListener(EMITTER_TIMER, this.move, this)
 		EventEmitter.removeListener(EMITTER_BOOM_CREATE, this.onCreateBoom, this)
 	}
+
 }
 
 // 气球怪
 class BalloonMonster extends Monster {
 	constructor(position) {
-		super(position, BALLOON_MONSTER)
+		super(position, { normal: BALLOON_MONSTER, die: BALLOON_MONSTER_DIE })
 	}
 
 	animation() {
@@ -1155,7 +1299,7 @@ class BalloonMonster extends Monster {
 class CrossWallMonster extends Monster {
 	crossable = true
 	constructor(position) {
-		super(position, CROSS_MONSTER)
+		super(position, { normal: CROSS_MONSTER, die: CROSS_MONSTER_DIE })
 	}
 	animation() {
 		const scaleX = this.instance.scaleX() || 1
@@ -1167,7 +1311,7 @@ class CrossWallMonster extends Monster {
 class SpeedMonster extends Monster {
 	speed = this.speed * 3
 	constructor(position) {
-		super(position, SPEED_MONSTER)
+		super(position, { normal: SPEED_MONSTER, die: SPEED_MONSTER_DIE })
 	}
 	animation() {
 		const scaleX = this.instance.scaleX() || 1
@@ -1188,10 +1332,10 @@ function createGamePrompt({ content, onRestart, timeout }) {
 			height: CANVAS_HEIGHT,
 			x: 0,
 			y: 0,
-			fill: "rgba(0, 0, 0, 0.3)",
+			fill: "rgba(0, 0, 0, 0.9)",
 		})
 	)
-	Layer.add(group)
+	PromptLayer.add(group)
 	const commonFontConfig = {
 		align: "center",
 		verticalAlign: "center",
@@ -1235,7 +1379,6 @@ class Game {
 	timeout = 480
 
 	level = 1
-	person
 	personLife = 3
 
 	loading = false
@@ -1253,7 +1396,12 @@ class Game {
 		buff.forEach(this.createBuff)
 		this.initDoor()
 		this.initPerson()
+		this.initlevel()
 		this.start()
+	}
+
+	initlevel() {
+		LevelContent.innerHTML = this.level
 	}
 
 	// 创建障碍墙
@@ -1279,7 +1427,7 @@ class Game {
 
 	// 创建角色
 	initPerson() {
-		this.person = new Person([1, 2], this.personLife)
+		new Person([1, 2], this.personLife)
 	}
 
 	onGameOver(life) {
