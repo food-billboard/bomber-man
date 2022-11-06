@@ -324,26 +324,48 @@ class CoreObject {
 	}
 }
 
-class DestroyAnimation {
+class AnimationObject extends CoreObject {
 
-	constructor(options) {
-		this.options = options
+	constructor(position) {
+		super(position)
 	}
 
-	// normal die destroy onDestroy instance 
-	options = {}
+	normalImage 
+	dieImage 
+	destroyingImage = []
+	moveImage 
 
 	lifeCycle = 1
+
+	moveIndex = 0 
 
 	get isAlive() {
 		return this.lifeCycle === 1
 	}
 
+	// 创建
+	create(afterCrate) {
+		loader(this.normalImage, image => {
+			this.instance = new Konva.Image({
+				x: this.x * UNIT,
+				y: this.y * UNIT,
+				width: UNIT,
+				height: UNIT,
+				image,
+			})
+			Layer.add(this.instance)
+			afterCrate && afterCrate()
+		})
+	}
+
+	// 全局循环
 	loop() {
-		if(this.lifeCycle >= 2 && this.lifeCycle < 100) {
-			this.die()
+		if(this.isAlive) {
+			this.moveAnimation()
+		}else if(this.lifeCycle >= 2 && this.lifeCycle < 100) {
+			this.dieAnimation()
 		}else if(this.lifeCycle >= 100) {
-			this.destroying()
+			this.destroyAnimation()
 		}
 		return !this.isAlive
 	}
@@ -352,31 +374,49 @@ class DestroyAnimation {
 		this.lifeCycle = 2
 	}
 
-	// 死亡
-	die() {
-		if(!this.options.die) {
+	update() {
+		this.moveIndex = 0 
+	}
+
+	// 运动动画
+	moveAnimation() {
+		const move = this.moveImage 
+		if(Array.isArray(move) && move.length) {
+			const length = move.length
+			loader(move[this.moveIndex], image => {
+				this.instance.image(image)
+			})
+			this.moveIndex ++
+			this.moveIndex %= length
+		}
+	}
+
+	// 死亡动画
+	dieAnimation() {
+		if(!this.dieImage) {
 			this.lifeCycle = 100 
 			return 
 		}
 		if(this.lifeCycle === 2) {
-			loader(this.options.die, (image) => {
-				this.options.instance.image(image)
+			loader(this.dieImage, (image) => {
+				this.instance.image(image)
 			})
 		}
 		this.lifeCycle ++
 	}
 
-	// 消失
-	destroying() {
-		const destroyImageLength = this.options.destroy.length
+	// 消失动画
+	destroyAnimation() {
+		const destroy = this.destroyingImage 
+		const destroyImageLength = destroy.length
 		if(this.lifeCycle > 120 + 20 * destroyImageLength) {
-			return this.options.onDestroy()
+			return this.destroy()
 		}
 		const index = (this.lifeCycle - 100) / 20 
-		const targetImage = this.options.destroy[index]
+		const targetImage = destroy[index]
 		if(targetImage) {
 			loader(targetImage, (image) => {
-				this.options.instance.image(image)
+				this.instance.image(image)
 			})
 		}
 		this.lifeCycle ++
@@ -385,7 +425,7 @@ class DestroyAnimation {
 }
 
 // 角色
-class Person extends CoreObject {
+class Person extends AnimationObject {
 	constructor(position, life) {
 		super(position)
 		this.create()
@@ -402,20 +442,14 @@ class Person extends CoreObject {
 	life = 3
 
 	create() {
-		this.instance = new Konva.Image({
-			x: this.x * UNIT,
-			y: this.y * UNIT,
-			width: UNIT,
-			height: UNIT,
-			fill: "red",
+		super.create(() => {
+			EventEmitter.emit(
+				EMITTER_PERSON_MOVE,
+				this,
+				{ x: this.x, y: this.y },
+				() => {}
+			)
 		})
-		Layer.add(this.instance)
-		EventEmitter.emit(
-			EMITTER_PERSON_MOVE,
-			this,
-			{ x: this.x, y: this.y },
-			() => {}
-		)
 	}
 
 	die() {
@@ -442,7 +476,7 @@ class Person extends CoreObject {
 	}
 
 	move(delta) {
-		if (this.loading) return
+		if (this.loading || this.loop()) return
 		this.loading = true
 		const { deltaX, deltaY } = delta
 		let newX = this.x + (deltaX * MOVE_UNIT * 20) / UNIT
@@ -908,25 +942,16 @@ class Buff extends CoreObject {
 	image 
 
 	create() {
-		// loader(this.image, image => {
-		// 	this.instance = new Konva.Image({
-		// 		x: this.x * UNIT,
-		// 		y: this.y * UNIT,
-		// 		width: UNIT,
-		// 		height: UNIT,
-		// 		image,
-		// 	})
-		// 	Layer.add(this.instance)
-		// })
-		this.instance = new Konva.Image({
-			x: this.x * UNIT,
-			y: this.y * UNIT,
-			width: UNIT,
-			height: UNIT,
-			// 后面改成图片
-			fill: this.image,
+		loader(this.image, image => {
+			this.instance = new Konva.Image({
+				x: this.x * UNIT,
+				y: this.y * UNIT,
+				width: UNIT,
+				height: UNIT,
+				image,
+			})
+			Layer.add(this.instance)
 		})
-		Layer.add(this.instance)
 	}
 
 	onTargetMove(instance, position, onKnock) {
@@ -963,7 +988,7 @@ class Buff extends CoreObject {
 // 连放炸弹buff
 class LoopBuff extends Buff {
 	constructor(position) {
-		super(position, "green")
+		super(position, LOOP_BOOM_BUFF)
 	}
 
 	onTargetMove(instance, position, onKnock) {
@@ -977,7 +1002,7 @@ class LoopBuff extends Buff {
 // 炸弹定点爆炸buff
 class TimeBoomBuff extends Buff {
 	constructor(position) {
-		super(position, "black")
+		super(position, TIME_BOOM_BUFF)
 	}
 	onTargetMove(instance, position, onKnock) {
 		super.onTargetMove(instance, position, (type, isKnock) => {
@@ -990,7 +1015,7 @@ class TimeBoomBuff extends Buff {
 // 炸弹爆炸范围buff
 class SuperBoomBuff extends Buff {
 	constructor(position) {
-		super(position, "gray")
+		super(position, SUPER_BOOM_BUFF)
 	}
 	onTargetMove(instance, position, onKnock) {
 		super.onTargetMove(instance, position, (type, isKnock) => {
@@ -1002,8 +1027,7 @@ class SuperBoomBuff extends Buff {
 
 class Door extends Buff {
 	constructor(position) {
-		// super(position, DOOR)
-		super(position, 'pink')
+		super(position, DOOR)
 	}
 
 	type = "DOOR"
@@ -1021,11 +1045,12 @@ class Door extends Buff {
 	}
 }
 
-class Wall extends CoreObject {
+class Wall extends AnimationObject {
 	constructor(position, destructible) {
 		super(position)
 		this.destructible = destructible
 		this.loading = this.destructible
+		this.normalImage = this.destructible ? DESTRUCTIBLE_WALL : UN_DESTRUCTIBLE_WALL
 		this.create()
 		this.destructible && this.eventBind()
 	}
@@ -1036,58 +1061,24 @@ class Wall extends CoreObject {
 	position = []
 	type = "WALL"
 
-	destroyAnimation
 	loading = true 
-	images = {
-		destroy: [
-			BOOM,
-			BALLOON_MONSTER,
-			CROSS_MONSTER,
-			SPEED_MONSTER,
-			DOOR
-		],
-	}
 
-	create() {
-		loader(
-			this.destructible ? DESTRUCTIBLE_WALL : UN_DESTRUCTIBLE_WALL,
-			(image) => {
-				this.instance = new Konva.Image({
-					x: this.x * UNIT,
-					y: this.y * UNIT,
-					width: UNIT,
-					height: UNIT,
-					image,
-				})
-				Layer.add(this.instance)
-				if(this.destructible) {
-					this.destroyAnimation = new DestroyAnimation({
-						...this.images,
-						onDestroy: this.destroy,
-						instance: this.instance
-					})
-					this.loading = false 
-				}
-			}
-		)
-	}
-
-	animation() {
-		this.destroyAnimation && this.destroyAnimation.loop()
-	}
+	destroyingImage = [
+		WALL_DESTROY
+	]
 
 	onTargetMove(instance, position, onKnock) {
-		if(this.loading || !this.destroyAnimation.isAlive) return onKnock(this.type, false)
+		if(this.loading || !this.isAlive) return onKnock(this.type, false)
 		const isKnock = knockJudge({ x: this.x, y: this.y }, { ...position })
 		onKnock(this.type, isKnock)
 		if(isKnock && instance.type === 'FIRE') {
 			this.nextEventBind()
-			this.destroyAnimation.over()
+			this.over()
 		}
 	}
 
 	nextEventBind() {
-		EventEmitter.addListener(EMITTER_TIMER, this.animation, this)
+		EventEmitter.addListener(EMITTER_TIMER, this.loop, this)
 	}
 
 	eventBind() {
@@ -1102,7 +1093,7 @@ class Wall extends CoreObject {
 		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 		EventEmitter.removeListener(EMITTER_BOOM_BOOMING, this.onTargetMove, this)
-		EventEmitter.removeListener(EMITTER_TIMER, this.animation, this)
+		EventEmitter.removeListener(EMITTER_TIMER, this.loop, this)
 	}
 
 	destroy() {
@@ -1112,25 +1103,19 @@ class Wall extends CoreObject {
 
 }
 
-class Monster extends CoreObject {
-	constructor(position, images) {
+class Monster extends AnimationObject {
+	constructor(position) {
 		super(position)
-		this.create(images.normal)
-		this.images = {
-			...this.images,
-			...images 
-		}
+		this.create()
 		this.eventBind()
 	}
 
-	// nomal die destroy 
-	// 生命周期中的一系列图片
-	images = {
-		destroy: [
-			
-		],
-	}
-	destroyAnimation 
+	destroyingImage = [
+		MONSTER_DESTROYING_1,
+		MONSTER_DESTROYING_2,
+		MONSTER_DESTROYING_3,
+		MONSTER_DESTROYING_4
+	]
 
 	type = "MONSTER"
 
@@ -1147,25 +1132,6 @@ class Monster extends CoreObject {
 
 	loading = true 
 
-	create(image) {
-		loader(image, (image) => {
-			this.instance = new Konva.Image({
-				x: this.x * UNIT,
-				y: this.y * UNIT,
-				width: UNIT,
-				height: UNIT,
-				image,
-			})
-			MonsterLayer.add(this.instance)
-			this.destroyAnimation = new DestroyAnimation({
-				...this.images,
-				onDestroy: this.destroy,
-				instance: this.instance
-			})
-			this.loading = false 
-		})
-	}
-
 	animation() {}
 
 	_animation() {
@@ -1177,7 +1143,7 @@ class Monster extends CoreObject {
 	}
 
 	move = () => {
-		if (this.loading || (this.destroyAnimation && this.destroyAnimation.loop())) return
+		if (this.loading || (this.destroyAnimation && this.loop())) return
 		this.loading = true
 		if (this.moveCounter === 0) {
 			// left top right bottom
@@ -1232,7 +1198,7 @@ class Monster extends CoreObject {
 						console.log("monster knocked", knockType)
 						if(knockType === 'FIRE') {
 							// 死亡
-							this.destroyAnimation.over()
+							this.over()
 						}
 						this.moveCounter = 0
 					} else {
@@ -1247,11 +1213,11 @@ class Monster extends CoreObject {
 	onCreateBoom(position) {}
 
 	onTargetMove(instance, position, onKnock) {
-		if(this.loading || !this.destroyAnimation.isAlive) return onKnock(this.type, false)
+		if(this.loading || !this.isAlive) return onKnock(this.type, false)
 		const isKnock = knockJudge(position, { x: this.x, y: this.y })
 		onKnock(this.type, isKnock)
 		if (instance.type === "FIRE" && isKnock) {
-			this.destroyAnimation.over()
+			this.over()
 		}
 	}
 
@@ -1285,9 +1251,9 @@ class Monster extends CoreObject {
 
 // 气球怪
 class BalloonMonster extends Monster {
-	constructor(position) {
-		super(position, { normal: BALLOON_MONSTER, die: BALLOON_MONSTER_DIE })
-	}
+
+	normalImage = BALLOON_MONSTER
+	dieImage = BALLOON_MONSTER_DIE
 
 	animation() {
 		const scaleY = this.instance.scaleY() || 1
@@ -1298,9 +1264,10 @@ class BalloonMonster extends Monster {
 // 穿墙怪
 class CrossWallMonster extends Monster {
 	crossable = true
-	constructor(position) {
-		super(position, { normal: CROSS_MONSTER, die: CROSS_MONSTER_DIE })
-	}
+
+	normalImage = CROSS_MONSTER
+	dieImage = CROSS_MONSTER_DIE
+
 	animation() {
 		const scaleX = this.instance.scaleX() || 1
 		this.instance.scaleX(scaleX == 1 ? 0.8 : 1)
@@ -1310,9 +1277,9 @@ class CrossWallMonster extends Monster {
 // 高速怪
 class SpeedMonster extends Monster {
 	speed = this.speed * 3
-	constructor(position) {
-		super(position, { normal: SPEED_MONSTER, die: SPEED_MONSTER_DIE })
-	}
+
+	normalImage = SPEED_MONSTER
+	dieImage = SPEED_MONSTER_DIE
 	animation() {
 		const scaleX = this.instance.scaleX() || 1
 		this.instance.scaleX(scaleX == 1 ? 0.8 : 1)
