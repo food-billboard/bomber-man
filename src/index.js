@@ -118,6 +118,10 @@ function getMonster(type) {
 	}
 }
 
+function randomMonster() {
+	return getMonster(['BalloonMonster', 'CrossWallMonster', 'SpeedMonster'][Math.floor(Math.random() * 3)])
+}
+
 // Constants
 
 const BOOM = "data:image/png;base64,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"
@@ -350,14 +354,14 @@ BoomButton.addEventListener("click", () => {
 })
 StopButton.addEventListener("click", stopGame)
 
-let CANVAS_WIDTH = document.documentElement.offsetWidth
+let CANVAS_WIDTH = Math.min(document.documentElement.offsetWidth, 800)
 let CANVAS_HEIGHT = (CANVAS_WIDTH * 13) / 33
 const UNIT = CANVAS_WIDTH / 33
 // 单步移动
 const MOVE_UNIT = UNIT / 100
 
 const Stage = new Konva.Stage({
-	container: "container",
+	container: "container-main",
 	width: CANVAS_WIDTH,
 	height: CANVAS_HEIGHT,
 })
@@ -788,7 +792,7 @@ class Fire extends CoreObject {
 				knocked = true
 			}
 			if (counter === 0) {
-				callback(knocked && knockType === 'WALL')
+				callback(knocked && (['WALL', 'DOOR'].includes(knockType)))
 			}
 		})
 	}
@@ -954,7 +958,7 @@ class Boom extends CoreObject {
 	// loading timeing wait boom destroy
 	timeStep = -1
 	timeoutStart
-	timeoutRest = 4000
+	timeoutRest = 2000
 
 	initBoomInstance
 	boomVertical
@@ -1183,16 +1187,34 @@ class Door extends Buff {
 	normalImage = DOOR
 
 	onTargetMove(instance, position, onKnock) {
-		if (EventEmitter.listenerCount(EMITTER_MONSTER_CREATE) !== 0) {
+		if (EventEmitter.listenerCount(EMITTER_MONSTER_CREATE) !== 0 && instance.type !== 'FIRE') {
 			return onKnock(this.type, false)
 		}
-		super.onTargetMove(instance, position, (type, isKnock) => {
-			onKnock(this.type, isKnock)
-			if (isKnock) {
-				EventEmitter.emit(EMITTER_NEXT_OP)
+		const type = instance.type 
+		const isKnock = knockJudge(position, { x: this.x, y: this.y })
+		onKnock(this.type, isKnock)
+		if (isKnock) {
+			if(type === 'PERSON') EventEmitter.emit(EMITTER_NEXT_OP)
+			if(type === 'FIRE') {
+				setTimeout(() => {
+					new Array(5).fill(0).forEach(() => {
+						new (randomMonster())([this.x, this.y])
+					})
+				}, 3000)
 			}
-		})
+		}
 	}
+
+	nextEventBind() {
+		super.nextEventBind()
+		EventEmitter.addListener(EMITTER_BOOM_BOOMING, this.onTargetMove, this)
+	}
+
+	eventUnBind() {
+		super.eventBind()
+		EventEmitter.removeListener(EMITTER_BOOM_BOOMING, this.onTargetMove, this)
+	}
+
 }
 
 class Wall extends AnimationObject {

@@ -5,11 +5,18 @@ body {
   margin: 4px;
 }
 #app {
-  width: 100vw;
+  width: min(100vw, 800px);
   height: 100vh;
   overflow: hidden;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
 }
-#container > div {
+#container {
+  width: 100%;
+  text-align: center;
+}
+#container-main > div {
   background-color: rgb(28, 172, 29);
 }
 .banner,
