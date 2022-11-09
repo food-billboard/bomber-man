@@ -300,7 +300,7 @@ const LEVEL_MAP = [
   }
 ]
 
-let GOD = false 
+let GOD = true 
 
 const LeftMoveButton = query(".action-left")
 const RightMoveButton = query(".action-right")
@@ -418,13 +418,16 @@ buttonActionBind(RightMoveButton, 'D')
 buttonActionBind(TopMoveButton, 'W')
 buttonActionBind(BottomMoveButton, 'S')
 
-DropButton.addEventListener("click", () => {
+const eventName = IS_MOBILE ? 'touchstart' : 'click'
+
+DropButton.addEventListener(eventName, () => {
 	EventEmitter.emit(EMITTER_DROP_OP)
 })
-BoomButton.addEventListener("click", () => {
+BoomButton.addEventListener(eventName, () => {
 	EventEmitter.emit(EMITTER_BOOM_OP)
 })
-StopButton.addEventListener("click", stopGame)
+StopButton.addEventListener(eventName, stopGame)
+document.onselectstart = function(){return false;}
 
 let CANVAS_WIDTH = Math.min(document.documentElement.offsetWidth, 800)
 let CANVAS_HEIGHT = (CANVAS_WIDTH * 13) / 33
@@ -1432,6 +1435,7 @@ class Door extends Buff {
 
 	type = "DOOR"
 	normalImage = DOOR
+	isKnock = false 
 
 	onTargetMove(instance, position, onKnock) {
 		if (EventEmitter.listenerCount(EMITTER_MONSTER_CREATE) !== 0 && !['FIRE', 'PREV'].includes(instance.type)) {
@@ -1442,11 +1446,13 @@ class Door extends Buff {
 		onKnock(this.type, isKnock)
 		if (isKnock) {
 			if(type === 'PERSON') EventEmitter.emit(EMITTER_NEXT_OP)
-			if(type === 'FIRE') {
+			if(type === 'FIRE' && !this.isKnock) {
+				this.isKnock = true 
 				setTimeout(() => {
 					new Array(5).fill(0).forEach(() => {
 						new (randomMonster())([this.x, this.y])
 					})
+					this.isKnock = false 
 				}, 3000)
 			}
 		}
@@ -1747,7 +1753,7 @@ function createGamePrompt({ content, onRestart, timeout }) {
 	text.offsetY(text.height() / 2)
 
 	if (!~timeout) {
-		text.on("click", () => {
+		text.on(eventName, () => {
 			group.destroy()
 			onRestart()
 		})

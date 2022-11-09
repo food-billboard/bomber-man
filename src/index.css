@@ -69,6 +69,8 @@ body {
 
 button {
   width: 60%;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 .action-top {
   grid-column-start: 2;
