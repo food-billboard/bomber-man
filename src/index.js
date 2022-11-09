@@ -117,8 +117,12 @@ function getMonster(type) {
 	}
 }
 
+function randomIntArea(max, min=0) {
+	return Math.floor(Math.random() * (max - min + 1) + min)
+}
+
 function randomMonster() {
-	return getMonster(['BalloonMonster', 'CrossWallMonster', 'SpeedMonster'][Math.floor(Math.random() * 3)])
+	return getMonster(['BalloonMonster', 'CrossWallMonster', 'SpeedMonster'][randomIntArea(3)])
 }
 
 // Constants
@@ -270,7 +274,7 @@ const UnDestructibleWallPosition = [
   }, [])
 ]
 
-const LEVEL_MAP = [
+const _LEVEL_MAP = [
   {
     wall: [
       ...UnDestructibleWallPosition
@@ -300,7 +304,113 @@ const LEVEL_MAP = [
   }
 ]
 
-let GOD = true 
+function createDestructibleWall(level) {
+	const xArea = [1, 30]
+	const yArea = [1, 11]
+
+	const wallCount = 50 + (level % 5) * 5
+
+	return new Array(wallCount).fill(0).reduce((acc, cur) => {
+		let randomX = randomIntArea(...xArea)
+		let randomY = randomIntArea(...yArea)
+		while(
+			(randomX < 3 && randomY < 3)
+			|| 
+			(randomX % 2 === 0 && randomY % 2 === 0)
+			||
+			acc.some(item => item[0] === randomX && item[1] === randomY)
+		) {
+			randomX = randomIntArea(...xArea)
+			randomY = randomIntArea(...yArea)
+		}
+		acc.push([randomX, randomY])
+		return acc 
+	}, [])
+
+}
+
+function createMonster(level, walls) {
+	const xArea = [1, 30]
+	const yArea = [1, 11]
+
+	const ballonCount = 4 + (level % 10) * 2
+	const crossCount = 1 + level % 10
+	const speedCount = 1 + level % 15
+
+	function getValue(type, current) {
+		let randomX = randomIntArea(...xArea)
+		let randomY = randomIntArea(...yArea)
+		while(
+			(randomX < 3 && randomY < 3)
+			|| 
+			(randomX % 2 === 0 && randomY % 2 === 0)
+			||
+			current.some(item => item[0] === randomX && item[1] === randomY)
+			||
+			walls.some(item => item[0] === randomX && item[1] === randomY)
+		) {
+			randomX = randomIntArea(...xArea)
+			randomY = randomIntArea(...yArea)
+		}
+		return [
+			type,
+			randomX,
+			randomY
+		]
+	}	
+	
+	return [
+		...new Array(ballonCount).fill(0).reduce((acc, cur) => {
+			acc.push(getValue('BalloonMonster', acc))
+			return acc 
+		}, []),
+		...new Array(crossCount).fill(0).reduce((acc, cur) => {
+			acc.push(getValue('CrossWallMonster', acc))
+			return acc 
+		}, []),
+		...new Array(speedCount).fill(0).reduce((acc, cur) => {
+			acc.push(getValue('SpeedMonster', acc))
+			return acc 
+		}, []),
+	]
+}
+
+function createBuff(level, walls) {
+	const typesMap = ['SuperBoomBuff', 'LoopBuff', 'TimeBoomBuff']
+	const typesHave = typesMap.map(() => randomIntArea(1))
+	return [1, ...typesHave].reduce((acc, cur, index) => {
+		if(cur) {
+			let random = randomIntArea(walls.length - 1)
+			let target = walls[random]
+			while(acc.some(item => item[0] === target[0] && item[1] === target[1])) {
+				random = randomIntArea(walls.length - 1)
+				target = walls[random]
+			}
+			acc.push([index == 0 ? undefined : typesMap[index - 1], ...target])
+		}
+		return acc 
+	}, [])	
+}
+
+const LEVEL_MAP = new Array(50).fill(0).map((_, index) => {
+
+	const walls = createDestructibleWall(index)
+	const monster = createMonster(index, walls)
+	const [door, ...buff] = createBuff(index, walls)
+
+	return {
+    wall: [
+      ...UnDestructibleWallPosition
+    ],
+    destructibleWall: walls,
+		monster,
+    door: door.slice(1),
+		buff,
+    time: 480 
+  }
+})
+
+let GOD = false 
 
 const LeftMoveButton = query(".action-left")
 const RightMoveButton = query(".action-right")
@@ -1579,9 +1689,9 @@ class Monster extends AnimationObject {
 				[0, 1],
 			]
 			const moveCounters = [1, 3, 5, 7, 9]
-			this.direction = directions[Math.floor(Math.random() * directions.length)]
+			this.direction = directions[randomIntArea(directions.length - 1)]
 			this.moveCounter =
-				moveCounters[Math.floor(Math.random() * moveCounters.length)] * 100
+				moveCounters[randomIntArea(moveCounters.length - 1)] * 100
 		}
 		this.moveCounter--
 		const [deltaX, deltaY] = this.direction
