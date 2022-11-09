@@ -51,7 +51,7 @@ body {
 }
 
 .action {
-  width: 100vw;
+  width: min(100vw, 800px);
   display: flex;
   align-items: center;
   margin-top: 10vh;

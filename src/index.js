@@ -26,6 +26,7 @@ function toFixed4(number) {
 function getWidth(target) {
   return target.width || 1
 }
+
 function getHeight(target) {
   return target.height || 1
 }
@@ -70,6 +71,7 @@ function stopGame() {
 	}
 	EventEmitter.emit(EMITTER_START_OP)
 }
+
 function getInfo(target) {
 	return {
 		x: target.x(),
@@ -130,6 +132,42 @@ const TIME_BOOM_BUFF = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAg
 const LOOP_BOOM_BUFF = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAACVBMVEX4uACsfAAAAAD5opkLAAAAOUlEQVQI12NwYGBgY5BatWoRg2poaBCDaggTkAjQAhIOnECCgQmTaOACEgmaQCJqaRBYG8SUVUAAADI/D2AhuIhaAAAAAElFTkSuQmCC"
 const WALL_DESTROY_1 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAABblBMVEX7hHP6j37vemvqeGbxsJz8j3/3jX36jXz4inv5g3LEUkLqn4z/k4L8hXX6gnHzf3D5fW7vfW2mOSXzno/xnI7+hnXyemzteWnwd2iwW0muUEO3Tj2ySzuiOiWgOCH3tKHys6DzsJ3xrJjpoo/toI7noY3xnI3xl4rknIn1mIn2kIPflIHuj376gXHodmXTj2Lna13ZZFS5WUupYEnAWEm+U0S4UkLDUEKcT0K6UEG0TjzBTTywTDmxNiKaNBuJNQDisqP3qJXdn4/Ino7dl4vXlontlIbhi4LtlYH4k4H6koH+kH3Zj3vWhXr7inj+iXjggnj+fnHVfnHrg3DwgXDPeG3QkGzlfGvHdmvRm2n0dmbmc2PqcmHhb17RilvIhlXOg1W8XU7HdUu3WUuLWkmzU0i5WUS4UkSiVT67TDuQWDqiXjKeSTGrPi+nQi6aXSuyOyuiPieNOSKpNB+NSxqvMhmNPgxdYgp4TgB4GwCyIuIvAAAA+UlEQVQY0x3G02LDYBgA0C//2iVpnDZGbdvtbNu2jbdfunN14NcslzVNOy+VLnVdv/uGxozfFQoGXY5AwJ/+gTEslUxhOE4QBDZL7/dhhOYZhmSBzWZ5frXwBePrB7kcEob+KcU+XFzVq7fdz7an7nG0n2HSG/dmuuaUN+bzxXzJXVjECVyoJuaI4QE8D2sSuaxWQvMsDDBHsCMgrtBKcyrHIYTkY2jUmkbn4aZjPr5cGy3jHiYiFBWlEuGFXjMSjlJbME1jbjeG0duVuNtZHlYkEgBI6fB0dIklmRPYlFUFCYgv1jIbirx3Bm+iaFuWJdq9p1dbfP/4A6WoJ3KdojKOAAAAAElFTkSuQmCC"
 const WALL_DESTROY_2 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAABIFBMVEUAAAD/moXDvZNCRwmRPAD2WTygvIX/g2ttRhBqQgAAYRMAAAAqvGGqmmaVQQHBvZGcuoOYoGNISQcTslldXBoss15MUwV1rmYALgAAwVoAPxXSUDTmlnbeclr/hW21oIG9dEn7X0H/hm6gNgCyuoh+SQq9gU+vqniNTQCJPQF0SBJtQACjq3VvSAB3QABqSQ6UZiaWt4CGoHOZgEWHr3A4PgiRaCltZReMtHp4UACGpGhsUgpiUAAYNgAAs1tyhTcmlU0AAABqqlxJbSxkok1RdDoAyV4AcQ7bQQrQvJHMOgD/wZz/t5j/uZnXwZb/m4b/im73Yz6OQgDPNwDbxZnmqoLanoLrcVHyTzPASQ/gPwrRMgN+NwLIQgDUPACsNAA5ttA7AAAASHRSTlMA/fNn/fyR+6ekIRA8Bf76jn1uQj83NSoYCgf+/f37+vr6+OPazsS/vLWtqKSYmJOMi4OCgH99fHNzZWNWS0NBPCckIyEWExJWgngPAAAAuElEQVQY023MxXrCUBRF4d3S3kqCOxXc3d2dBHd//7fgBBjx8Q/XYAEtl/L1RpmCpPo7frkZ28oguu2ud7cPg7SjwS/ySQI6PJFgORCjijGmYnEjVsIyCznUgjgciqKgxo994+wCsem7ZJrBQaFwm+Uozt4ksxLqnMkC8k1MHAfUeD2v1VY6IGZeb4F11CcjL0fn0KJfwN//B3GsIwA8k0kS5/lAMvdT8J2OeaRlVxoDBYNG1sSDxgVSWRuQg+Tl0wAAAABJRU5ErkJggg=="
+
+const FIRE_HORIZONTAL_1 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAADFBMVEUAAAD5fWzAKw79vbVkpeBgAAAAAXRSTlMAQObYZgAAADFJREFUCNdjQANNTE1MDKuAgCEyNDKUIfRq6FWG/0AAIULDQ8MZUoEAoqRjUcciNP0Aid0XQfm1zdEAAAAASUVORK5CYII="
+const FIRE_HORIZONTAL_2 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAD1BMVEUAAAD5fWz9vbX5fWzAKw5yCC2EAAAAAnRSTlMA+1z85qwAAAA+SURBVAjXnc5BDQAgDATBfSABBVQBnIEm1L8mKKkCNpnkngfu7YnoPSFtXRNbssSoPoetYQlVaIeuSVTUCT+RzRSx8GvuggAAAABJRU5ErkJggg=="
+const FIRE_VERTICAL_1 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAD1BMVEUAAAD9vbX5fWzAKw79vbU4oKx4AAAAAnRSTlMA81Inbp4AAAAwSURBVAjXY2BgNlIUVDZgAAIjFSdlBijDGCLi4oQqxWysghAxBosYgUQgDBfKzQEA3CAN81iVPigAAAAASUVORK5CYII="
+const FIRE_VERTICAL_2 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAFVBMVEUAAAD9vbX5fWz9vbX9vbX5fWzAKw4LDe+8AAAABHRSTlMA8/fo8T22IwAAADRJREFUCNdjSAsSNDQUCk1gYA1xAYLQNAa2UBAjLIEhKRXKYINJpYGkXEEiYEYohhTF5gAA+3Mj8g4HdDQAAAAASUVORK5CYII="
+
+const FIRE = {
+	left: {
+		head: [
+			"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAD1BMVEUAAAD9vbXAKw75fWz9vbUwWy76AAAAAnRSTlMA81Inbp4AAABDSURBVAjXY8APFBSYGJgYGJgUlEAAyFBSNlY2NgbKKJkYGzsDGUzKLkDgCBSBMKBSxoYghrKRsZExsnaQiUpMeCwEAKDPCZHzwuXOAAAAAElFTkSuQmCC",
+			"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAFVBMVEUAAAD5fWz9vbX9vbX9vbXAKw75fWypna8pAAAABHRSTlMA+vPomoBIqAAAAFlJREFUCNdFjLEJwDAQA9VohAyUxLj+Rt8bHO0/QuzYkEOFOIQgIhBBMCjpOCDpsbOBtmv3CabL4EJkn+WGsixD7/Kb7Ntoj0MutZfvZ9IgZzrVQC0gEjHyAq2FIxTik3vAAAAAAElFTkSuQmCC"
+		],
+	},
+	right: {
+		head: [
+			"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAD1BMVEUAAAD9vbXAKw75fWz9vbUwWy76AAAAAnRSTlMA81Inbp4AAABCSURBVAjXfcqxEcAwCARBRjW4AObdAe8OcP81+QgcSvcBGxCHcgUDohTwbVcO3G6h66UK8MP20wJlNtC0eM6cA/Z9t/4JzNDj1mEAAAAASUVORK5CYII=",
+			"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAD1BMVEUAAAD5fWz9vbXAKw75fWwT5lq7AAAAAnRSTlMA+bLyh4AAAABPSURBVAjXNcjRCcAwDANRgUfIBsEDCJQJYu0/U+sW39fjADKoCEhr6SXsY1cReZ0fdueKHzlnW4M5NZiTEvLu3Dbh7jSOXBKhjhQYIIl4ABAaFgF6VriyAAAAAElFTkSuQmCC"
+		],
+	},
+	top: {
+		head: [
+			"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAADFBMVEUAAADAKw75fWz9vbVsXmLiAAAAAXRSTlMAQObYZgAAADlJREFUCNdjQAcsjAwMjK6uQCJsCpAb/dSBgTH/J5Cb/dOBgSH7JQOQeApk5b+EchmjwaynICUvHQC/AhBENHUjngAAAABJRU5ErkJggg==",
+			"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAD1BMVEUAAAD5fWz9vbXAKw75fWwT5lq7AAAAAnRSTlMA+bLyh4AAAABQSURBVAjXVYvBDcAwDAJdsYmVAVzhCWLvP1NJGqkqrxMcRlgEAUOARNBIVleFoZUN2e5dMnO6DzVMV5pyNqhZMATX/E2S7zyAMx15Ne/rmx4ERxV+RgElawAAAABJRU5ErkJggg=="
+		],
+	},
+	bottom: {
+		head: [
+			"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAADFBMVEUAAADAKw75fWz9vbVsXmLiAAAAAXRSTlMAQObYZgAAADpJREFUCNdjYMz+6cDAkP2SAUg8BbLyX0K5jNFg1lMgKxvEyv8JVBL9FEiETQWKuQY6MDAyOAAlUAAAV+8Qy6uzR4UAAAAASUVORK5CYII=",
+			"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAD1BMVEUAAAD5fWz9vbXAKw75fWwT5lq7AAAAAnRSTlMA+bLyh4AAAABPSURBVAjXRYvRDcBACEJt3MTcADY4QY/9ZyomtscX8MDAiFhMu56QCHO22Wl3jfFBM+7mex30j6srIUBmAZZ9IxuRrEas2oAaSJm6u1sqvx67FcraHW9dAAAAAElFTkSuQmCC"
+		],
+	},
+	middle: [
+		"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAD1BMVEUAAAD9vbXAKw75fWz9vbUwWy76AAAAAnRSTlMA81Inbp4AAABcSURBVAjXPU7BDcQwDLLuFkmIJzCZwGX/mUpaqfYDhBE4In7kiDMg8ZLFGudSG5xGaAs9Au2VXZUplSooCwCDDXSniSyk6BRAWo6caTyJ/9VZ86nYl4W33Y7vjRv9LBGk1hYcnwAAAABJRU5ErkJggg==",
+		"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAFVBMVEX5fWz9vbUAAAD9vbX9vbX5fWzAKw6u+Mg/AAAABHRSTlP78wDo+6dQ/wAAAEpJREFUCNdjSAt1cXFxDU1iSA1xAYLQNIZUoAhQKIwBSIMYAQwuQCmQHIMLFBDFcEVjhEANdAkAWQoCbAxqEEYSgxqzoKGgIUMaADcZInT+FUzmAAAAAElFTkSuQmCC",
+	]
+}
 
 const BALLOON_MONSTER = {
 	normalImage: [
@@ -737,8 +775,6 @@ class Person extends AnimationObject {
 							case "FIRE":
 								this.die()
 								break
-							default:
-								console.log("hello world")
 						}
 					} else {
 						this.updatePosition(newPosition)
@@ -763,7 +799,7 @@ class Person extends AnimationObject {
 
 	onTargetMove(instance, position, onKnock) {
 		const isKnock = knockJudge({ x: this.x, y: this.y }, { ...position })
-		if (isKnock) {
+		if (isKnock && instance.type !== 'PREV') {
 			this.die()
 		}
 		onKnock(this.type, isKnock)
@@ -802,176 +838,179 @@ class Person extends AnimationObject {
 
 // 火🔥
 class Fire extends CoreObject {
+
 	constructor(position, options) {
 		super(position)
-		const { maxBoomArea, align } = options
-		this.maxBoomArea = maxBoomArea
-		this.align = align
-		this.create()
-		this.eventBind()
+		const { delta, isMax, headImage, barImage, barInfo, headInfo } = options
+		this.delta = delta
+		this.isMax = isMax 
+		this.headImage = headImage 
+		this.barImage = barImage
+		this.barInfo = barInfo
+		this.headInfo = headInfo
+		this.calculate()
 	}
 
-	type = "FIRE"
+	headTargets = [] 
+	barTargets = []  
 
-	align = 'vertical'
-	maxBoomArea = 2 
-	boomStart = 0
-	boomEnd = 0
-	boomAnimation = 0 
-	boomUpdated = false 
+	knocked = false 
 
-	nextEventBindEnd = false 
+	type = "PREV"
+	headImage = [] 
+	barImage = [] 
 
-	emitBooming({ x, y }, callback) {
+	width = 0
+	height = 0
+	delta 
+	isMax 
+	barInfo
+	headInfo
+
+	loading = true 
+
+	boomInfo 
+
+	calculate() {
+		let newInfo = { x: this.x, y: this.y, height: this.height, width: this.width }
+		let tempInfo = {
+			...newInfo,
+			width: 1,
+			height: 1,
+		}
+		const _calculate = (callback) => {
+			if(knockWall(tempInfo)) {
+				this.knocked = true
+				callback()
+			}else if(this.isMax(tempInfo)) {
+				newInfo = {
+					...newInfo,
+					...tempInfo
+				}
+				callback()
+			}else {
+				this.emitBooming(tempInfo, (isKnock) => {
+					if (isKnock) {
+						this.knocked = true 
+						callback()
+					}else {
+						newInfo = {
+							...newInfo,
+							...tempInfo
+						}
+						tempInfo = this.delta(tempInfo)
+						_calculate(callback)
+					}
+				})
+			}
+		}
+		_calculate(() => {
+			this.type = 'FIRE'
+			Object.entries(newInfo).forEach(item => {
+				const [ key, value ] = item
+				this[key] = value  
+			})
+			this.boomInfo = tempInfo
+			this.create()
+		})
+	}
+
+	outerEmitBoom() {
+		this.boomInfo && this.emitBooming(this.boomInfo)
+	}
+
+	emitBooming(info, callback) {
 		let counter = EventEmitter.listenerCount(EMITTER_BOOM_BOOMING)
 		let knockType
 		let knocked = false
-		EventEmitter.emit(EMITTER_BOOM_BOOMING, this, { x, y }, (type, isKnock) => {
+		EventEmitter.emit(EMITTER_BOOM_BOOMING, this, info, (type, isKnock) => {
 			counter--
 			if (isKnock) {
 				knockType = type
 				knocked = true
 			}
 			if (counter === 0) {
-				callback(knocked && (['WALL', 'DOOR'].includes(knockType)))
+				callback && callback(knocked && ['WALL', 'DOOR'].includes(knockType))
 			}
 		})
 	}
 
 	create() {
-		this.instance = new Konva.Image({
-			x: this.x * UNIT,
-			y: this.y * UNIT,
-			width: UNIT,
-			height: UNIT,
-			fill: this.align === "vertical" ? "yellow" : "black",
-		})
-		BoomLayer.add(this.instance)
-	}
 
-	get updatePosition() {
-		return this.align === 'vertical' ? 'y' : 'x'
-	}
-
-	get updateSize() {
-		return this.align === 'vertical' ? 'height' : 'width'
-	}
-
-	animation() {
-		// destroy
-		this.loading = this.boomStart >= this.maxBoomArea && this.boomEnd >= this.maxBoomArea
-		if(this.loading) {
-			if(!this.nextEventBindEnd) {
-				this.nextEventBindEnd = true 
-				this.nextEventBind()
-			}
-			return 
-		} 
-		this.boomAnimation++
-		this.boomAnimation %= 5
-		if (this.boomAnimation !== 0 && !this.boomUpdated) return
-		this.boomCounter = false 
-		// update
-		if (
-			this.boomStart < this.maxBoomArea ||
-			this.boomEnd < this.maxBoomArea
-		) {
-			let newPosition = getInfo(this.instance)
-			new Promise((resolve) => {
-				if (this.boomStart < this.maxBoomArea) {
-					const templatePosition = {
-						...newPosition,
-						[this.updatePosition]: newPosition[this.updatePosition] - UNIT,
-						[this.updateSize]: newPosition[this.updateSize] + UNIT,
-					}
-					const x = Math.round(templatePosition.x / UNIT)
-					const y = Math.round(templatePosition.y / UNIT)
-					if(knockWall({ x, y })) this.boomStart = this.maxBoomArea
-					if (this.boomStart < this.maxBoomArea) {
-						this.emitBooming({ x, y }, (isKnock) => {
-							if (isKnock) {
-								this.boomStart = this.maxBoomArea
-							}else {
-								this.boomStart ++
-								newPosition = {
-									...newPosition,
-									...templatePosition,
-								}
-							}
-							resolve()
-						})
-					}else {
-						this.boomStart ++
-						resolve() 
-					}
-				} else {
-					resolve()
-				}
-			})
-			.then(() => {
-				return new Promise((resolve) => {
-					if (this.boomEnd < this.maxBoomArea) {
-						const templatePosition = {
-							...newPosition,
-							[this.updateSize]: newPosition[this.updateSize] + UNIT,
-						}
-						const x = Math.round(templatePosition.x / UNIT)
-						const y = Math.round(templatePosition.y / UNIT)
-						const size = Math.round(templatePosition[this.updateSize] / UNIT)
-						const knockTarget = this.align === 'vertical' ? { x, y: y + size - 1 } : { x: x + size - 1, y }
-						if(knockWall(knockTarget)) this.boomEnd = this.maxBoomArea
-						if (this.boomEnd < this.maxBoomArea) {
-							this.emitBooming(knockTarget, (isKnock) => {
-								if (isKnock) {
-									this.boomEnd = this.maxBoomArea
-								}else {
-									this.boomEnd ++
-									newPosition = {
-										...newPosition,
-										...templatePosition,
-									}
-								}
-								resolve()
-							})
-						}else {
-							this.boomEnd ++
-							resolve() 
-						}
-					} else {
-						resolve()
-					}
-				})
-			})
-			.then(() => {
-				this.boomUpdated = true 
-				this.instance[this.updatePosition](newPosition[this.updatePosition])
-				this.instance[this.updateSize](newPosition[this.updateSize])
-			})
-		} else {
-			this.boomUpdated = true 
+		const info = {
+			x: this.x,
+			y: this.y,
+			width: this.width,
+			height: this.height,
+			knocked: this.knocked
 		}
+
+		if(!this.width || !this.height) return 
+
+		loader(this.barImage[0], image => {
+			this.barTargets.push(...this.barInfo(info).map(item => {
+				const instance = new Konva.Image({
+					...item,
+					image,
+				})
+				BoomLayer.add(instance)
+				return instance
+			}))
+			if(!this.knocked) {
+				loader(this.headImage[0], image => {
+					const instance = new Konva.Image({
+						...this.headInfo(info)[0],
+						image 
+					})
+					BoomLayer.add(instance)
+					this.headTargets.push(instance)
+					this.eventBind()
+				})
+			}else {
+				this.eventBind()
+			}
+		})
+	}
+
+	updateImage(index) { 
+		this.headTargets.forEach(item => {
+			loader(this.headImage[index], image => {
+				item.image(image)
+			})
+		})
+		this.barTargets.forEach(item => {
+			loader(this.barImage[index], image => {
+				item.image(image)
+			})
+		})
 	}
 
 	onTargetMove(instance, position, onKnock) {
-		const isKnock = knockJudge(formatInfo(getInfo(this.instance)), position)
+		const isKnock = knockJudge({
+			x: this.x,
+			y: this.y,
+			width: this.width,
+			height: this.height
+		}, position)
 		onKnock(this.type, isKnock)
 	}
 
 	eventBind = () => {
 		super.eventBind()
-		EventEmitter.addListener(EMITTER_TIMER, this.animation, this)
+		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
+		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 	}
 
 	eventUnBind = () => {
 		super.eventBind()
-		EventEmitter.removeListener(EMITTER_TIMER, this.animation, this)
 		EventEmitter.removeListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
 		EventEmitter.removeListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
 	}
 
-	nextEventBind = () => {
-		EventEmitter.addListener(EMITTER_PERSON_MOVE, this.onTargetMove, this)
-		EventEmitter.addListener(EMITTER_MONSTER_MOVE, this.onTargetMove, this)
+	destroy() {
+		super.destroy()
+		this.headTargets.forEach(item => item.destroy())
+		this.barTargets.forEach(item => item.destroy())
 	}
 
 }
@@ -1002,10 +1041,7 @@ class Boom extends CoreObject {
 	timeoutRest = 2000
 
 	initBoomInstance
-	boomVertical
-	boomHorizontal
-
-	boomAnimation = 0
+	fireMap = []
 
 	get maxBoomArea() {
 		return this.hugeState ? 3 : 1
@@ -1059,7 +1095,6 @@ class Boom extends CoreObject {
 			})
 			this.timeStep = 0
 			Layer.add(this.initBoomInstance)
-			console.log(this.initBoomInstance, UNIT / 16)
 			this.initBoomInstance.start()
 			this.timeoutStart = Date.now()
 			if (this.timeState) {
@@ -1079,46 +1114,202 @@ class Boom extends CoreObject {
 		}
 	}
 
+	updateImage(index) {
+		loader(FIRE.middle[index], image => {
+			this.initBoomInstance.image(image)
+		})
+		this.fireMap.forEach(item => item.updateImage(index))
+	}
+
+	eventEmit() {
+		this.fireMap.forEach(item => item.outerEmitBoom())
+	}
+
 	// 立刻爆炸
 	immediateBoom(step) {
 		if(step !== undefined) this.timeStep = 2
 		// init
-		if (!this.boomVertical) {
+		if (!this.fireMap.length) {
 			this.type = 'FIRE'
 			EventEmitter.emit(EMITTER_BOOM_BOOMING, this, { x: this.x, y: this.y }, () => {
 				this.type = 'BOOM'
 			})
+			this.initBoomInstance.stop()
 			this.initBoomInstance.destroy()
-			this.boomVertical = new Fire([this.x, this.y], {
-				align: 'vertical',
-				maxBoomArea: this.maxBoomArea
+			loader(FIRE.middle[0], image => {
+				this.initBoomInstance = new Konva.Image({
+					x: this.x * UNIT,
+					y: this.y * UNIT,
+					width: UNIT,
+					height: UNIT,
+					image 
+				})
+				BoomLayer.add(this.initBoomInstance)
 			})
-			this.boomHorizontal = new Fire([this.x, this.y], {
-				align: 'horizontal',
-				maxBoomArea: this.maxBoomArea
-			})
+			this.fireMap.push(new Fire([this.x - 1, this.y], { // left 
+				delta: (info) => {
+					return {
+						x: info.x - 1,
+						y: info.y,
+						width: info.width + 1,
+						height: info.height
+					}
+				},
+				headInfo: (info) => {
+					return [{
+						x: info.x * UNIT,
+						y: info.y * UNIT,
+						width: UNIT,
+						height: UNIT
+					}]
+				},
+				barInfo: (info) => {
+					const x = info.knocked ? info.x : info.x + 1
+					const width = info.knocked ? info.width : info.width - 1
+					const common = {
+						y: info.y * UNIT,
+						height: UNIT
+					}
+					return new Array(width).fill(0).map((item, index) => {
+						return {
+							...common,
+							width: UNIT,
+							x: (x + index) * UNIT
+						}
+					})
+				},
+				isMax: (info) => info.width === this.maxBoomArea,
+				headImage: FIRE.left.head,
+				barImage: [FIRE_HORIZONTAL_1, FIRE_HORIZONTAL_2]
+			}),
+			new Fire([this.x + 1, this.y], { // right 
+				delta: (info) => {
+					return {
+						x: info.x,
+						y: info.y,
+						width: info.width + 1,
+						height: info.height 
+					}
+				},
+				isMax: (info) => info.width === this.maxBoomArea,
+				headInfo: (info) => {
+					return [{
+						x: (info.x + info.width - 1) * UNIT,
+						y: info.y * UNIT,
+						width: UNIT,
+						height: UNIT
+					}]
+				},
+				barInfo: (info) => {
+					const x = info.x
+					const width = info.knocked ? info.width : info.width - 1
+					const common = {
+						y: info.y * UNIT,
+						height: UNIT
+					}
+					return new Array(width).fill(0).map((item, index) => {
+						return {
+							...common,
+							width: UNIT,
+							x: (x + index) * UNIT
+						}
+					})
+				},
+				headImage: FIRE.right.head,
+				barImage: [FIRE_HORIZONTAL_1, FIRE_HORIZONTAL_2]
+			}),
+			new Fire([this.x, this.y - 1], { // top
+				delta: (info) => {
+					return {
+						x: info.x,
+						y: info.y - 1,
+						width: info.width,
+						height: info.height + 1 
+					}
+				},
+				isMax: (info) => info.height === this.maxBoomArea,
+				headInfo: (info) => {
+					return [{
+						x: info.x * UNIT,
+						y: info.y * UNIT,
+						width: UNIT,
+						height: UNIT
+					}]
+				},
+				barInfo: (info) => {
+					const y = info.knocked ? info.y : info.y + 1
+					const height = info.knocked ? info.height : info.height - 1
+					const common = {
+						x: info.x * UNIT,
+						width: UNIT
+					}
+					return new Array(height).fill(0).map((item, index) => {
+						return {
+							...common,
+							height: UNIT,
+							y: (y + index) * UNIT
+						}
+					})
+				},
+				headImage: FIRE.top.head,
+				barImage: [FIRE_VERTICAL_1, FIRE_VERTICAL_2]
+			}),
+			new Fire([this.x, this.y + 1], { // bottom 
+				delta: (info) => {
+					return {
+						x: info.x,
+						y: info.y,
+						width: info.width,
+						height: info.height + 1 
+					}
+				},
+				isMax: (info) => info.height === this.maxBoomArea,
+				headInfo: (info) => {
+					return [{
+						x: info.x * UNIT,
+						y: (info.y + info.height - 1) * UNIT,
+						width: UNIT,
+						height: UNIT
+					}]
+				},
+				barInfo: (info) => {
+					const y = info.y
+					const height = info.knocked ? info.height : info.height - 1
+					const common = {
+						x: info.x * UNIT,
+						width: UNIT
+					}
+					return new Array(height).fill(0).map((item, index) => {
+						return {
+							...common,
+							height: UNIT,
+							y: (y + index) * UNIT
+						}
+					})
+				},
+				headImage: FIRE.bottom.head,
+				barImage: [FIRE_VERTICAL_1, FIRE_VERTICAL_2]
+			}))
 			return
 		}
-		// destroy
-		if (
-			this.boomVertical.loading && this.boomHorizontal.loading
-		) {
-			this.timeStep++
-			if (this.timeStep > 50) {
-				this.onBoom(this.id)
-				this.destroy()
-			}
+
+		if(this.timeStep === 10) {
+			this.updateImage(1)
+			this.eventEmit()
+		}else if(this.timeStep === 20) {
+			this.updateImage(0)	
+		}else if(this.timeStep > 30) {
+			this.onBoom(this.id)
+			this.destroy()
 		}
+		this.timeStep++
 	}
 
 	destroy() {
 		super.destroy()
 		try {
 			this.initBoomInstance.destroy()
-			this.boomVertical.destroy()
-			this.boomHorizontal.destroy()
-			this.boomVertical = undefined
-			this.boomHorizontal = undefined
+			this.fireMap.forEach(item => item.destroy())
 		} catch (err) {}
 	}
 }
@@ -1172,7 +1363,7 @@ class Buff extends AnimationObject {
 	}
 
 	onTargetMove(instance, position, onKnock) {
-		const isKnock = knockJudge(position, { x: this.x, y: this.y })
+		const isKnock = knockJudge(position, { x: this.x, y: this.y }) && instance.type === 'PERSON'
 		onKnock(this.type, isKnock)
 		if (isKnock) {
 			this.destroy()
@@ -1243,7 +1434,7 @@ class Door extends Buff {
 	normalImage = DOOR
 
 	onTargetMove(instance, position, onKnock) {
-		if (EventEmitter.listenerCount(EMITTER_MONSTER_CREATE) !== 0 && instance.type !== 'FIRE') {
+		if (EventEmitter.listenerCount(EMITTER_MONSTER_CREATE) !== 0 && !['FIRE', 'PREV'].includes(instance.type)) {
 			return onKnock(this.type, false)
 		}
 		const type = instance.type 
